@@ -1,7 +1,4 @@
 
-# meson setup build
-# cd build && ninja
-
 project('my-sdbusplus', 'cpp', 'c',
     default_options: [
       'buildtype=debugoptimized',
