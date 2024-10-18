@@ -43,12 +43,56 @@ sdbusplus_dep = declare_dependency(
     ],
 )
 
+
+
+# build tools
+
+# (installed or not ? should build ?)
+
 subdir('tools')
 
-if not get_option('examples').disabled()
-  subdir('example')
-endif
-#if not get_option('tests').disabled()
-#  subdir('test')
-#endif
 
+
+
+
+# build example ...
+
+if not get_option('list-users').disabled()
+  subdir('list-users')
+endif
+
+if not get_option('coroutine-example').disabled()
+  subdir('coroutine-example')
+endif
+
+
+
+
+# check async ...
+
+has_asio = meson.get_compiler('cpp').has_header_symbol(
+  'boost/asio.hpp',
+  'boost::asio::io_context',
+  required: false)
+asio_dep = sdbusplus_dep
+if not has_asio
+  asio_dep = disabler()
+endif
+
+assert(
+    not get_option('examples').allowed() or has_asio,
+    'Boost is required when examples are enabled'
+)
+
+# build async example ...
+
+if not get_option('asio-example').disabled()
+  subdir('asio-example')
+endif
+
+
+# build (async) example with gen ...
+
+if not get_option('calculator').disabled()
+  subdir('calculator')
+endif

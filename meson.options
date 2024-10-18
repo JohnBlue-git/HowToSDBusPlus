@@ -1,2 +1,8 @@
-option('tests', type: 'feature', description: 'Build tests')
-option('examples', type: 'feature', description: 'Build examples')
+option('list-users', type: 'feature', description: 'Build list-users')
+option('coroutine-example', type: 'feature', description: 'Build coroutine-example')
+
+option('asio-example', type: 'feature', description: 'Build asio-example')
+option('register-property', type: 'feature', description: 'Build register-property')
+option('get-all-properties', type: 'feature', description: 'Build get-all-properties')
+
+option('calculator', type: 'feature', description: 'Build calculator')
