@@ -46,13 +46,9 @@ sdbusplus_dep = declare_dependency(
 
 
 # build tools
-
-# (installed or not ? should build ?)
-
 subdir('tools')
-
-
-
+sdbusplusplus_prog = find_program('sdbus++', native: true)
+sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson', native: true)
 
 
 # build example ...
