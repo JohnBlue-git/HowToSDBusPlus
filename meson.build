@@ -1,11 +1,15 @@
+
+# meson setup build
+# cd build && ninja
+
 project('my-sdbusplus', 'cpp', 'c',
     default_options: [
       'buildtype=debugoptimized',
       'cpp_std=c++23',
       'warning_level=3',
       'werror=true',
-      'tests=' + (meson.is_subproject() ? 'disabled' : 'auto'),
-      'examples=' + (meson.is_subproject() ? 'disabled' : 'auto'),
+      #'tests=' + (meson.is_subproject() ? 'disabled' : 'auto'),
+      #'examples=' + (meson.is_subproject() ? 'disabled' : 'auto'),
     ],
     version: '1.0.0',
     meson_version: '>=1.1.1',
@@ -76,8 +80,9 @@ if not has_asio
 endif
 
 assert(
-    not get_option('examples').allowed() or has_asio,
-    'Boost is required when examples are enabled'
+    #not get_option('examples').allowed() or has_asio,
+    has_asio,
+    'Boost is required when ... are enabled'
 )
 
 # build async example ...
