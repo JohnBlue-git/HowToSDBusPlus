@@ -20,6 +20,27 @@ cd meson
 python3 setup.py install --user
 ```
 
+## To force the installation of GCC G++ 13:
+```console
+# Add the Toolchain PPA (if necessary): If GCC 13 is not available in your default repositories, you can add the Ubuntu Toolchain PPA
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+
+# Install GCC 13
+sudo apt install gcc-13 g++-13
+
+# Set GCC 13 as the Default
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 60
+
+# configure which version to use by running:
+sudo update-alternatives --config gcc
+sudo update-alternatives --config g++
+
+# Verify
+gcc --version
+```
+
 ## Clone the lbrary source
 ```console
 git clone https://github.com/openbmc/sdbusplus.git
