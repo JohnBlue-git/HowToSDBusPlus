@@ -28,7 +28,7 @@ git clone https://github.com/openbmc/sdbusplus.git
 ## Built via meson
 Optionally, building the tests and examples can be disabled by passing -Dtests=disabled and -Dexamples=disabled respectively to meson.
 ```console
-meson build
+meson setup build
 cd build
 ninja
 ninja test
@@ -38,6 +38,11 @@ The sdbus++ application is installed as a standard Python package using setuptoo
 ```console
 cd tools
 ./setup.py install
+```
+
+## If want to update subproject
+```console
+meson subprojects update
 ```
 
 ## Explain the meson build script
