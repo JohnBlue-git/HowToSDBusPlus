@@ -13,11 +13,26 @@ sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
     python3 python3-pip python3-yaml python3-mako python3-inflection
 ```
 
-## Install from Source (if the package manager doesn't have the latest version):
+## Pre-install from Source (if the package manager doesn't have the latest version):
 ```console
 git clone https://github.com/mesonbuild/meson.git
 cd meson
 python3 setup.py install --user
+```
+
+## Pre-install python package for tools
+Install jsonschema
+```console
+# update pip
+pip install --upgrade pip
+
+# Install jsonschema
+# pip install jsonschema
+# To ensure you're using pip for Python 3, you can explicitly call:
+pip3 install jsonschema
+
+# Verify
+python3 -m jsonschema --version
 ```
 
 ## To force the installation of GCC G++ 13:
@@ -64,6 +79,18 @@ cd tools
 ## If want to update subproject
 ```console
 meson subprojects update
+```
+
+## If encounter boost library header deprecated
+reference: \
+https://stackoverflow.com/questions/66906613/how-to-silence-internal-boost-deprecated-messages
+
+Add to meson.build
+```console
+boost_compile_args = [
+    '-DBOOST_ALLOW_DEPRECATED_HEADERS',
+
+]
 ```
 
 ## Explain the meson build script
