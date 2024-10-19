@@ -7,6 +7,8 @@ https://github.com/openbmc/sdbusplus
 
 ## Pre-install some dependency
 ```console
+sudo apt-get install libboost-all-dev
+
 sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
     python3 python3-pip python3-yaml python3-mako python3-inflection
 ```
