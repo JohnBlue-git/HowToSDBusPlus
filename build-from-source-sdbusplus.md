@@ -64,7 +64,7 @@ git clone https://github.com/openbmc/sdbusplus.git
 ## Built via meson
 Optionally, building the tests and examples can be disabled by passing -Dtests=disabled and -Dexamples=disabled respectively to meson.
 ```console
-meson setup build
+meson setup --reconfigure build
 cd build
 ninja
 ninja test
