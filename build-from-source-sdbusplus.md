@@ -14,25 +14,32 @@ sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
 ```
 
 ## Pre-install from Source (if the package manager doesn't have the latest version):
-normally
+Normally, just do the following ...
 ```console
 git clone https://github.com/mesonbuild/meson.git
 cd meson
 python3 setup.py install --user
 ```
 To prevent conflicts between system package managers and Python’s package manager. Here are a few ways to resolve this issue: \
-- Use a Virtual Environment: Create a virtual environment to isolate your Python packages from the system packages
+(1 way) Use a Virtual Environment: Create a virtual environment to isolate your Python packages from the system packages
 ```console
 sudo apt install python3-venv
 python3 -m venv ~/myenv
 source ~/myenv/bin/activate
 pip install --upgrade meson
 ```
-- Use pipx: pipx is a tool to install and run Python applications in isolated environments
+(2 way) Use pipx: pipx is a tool to install and run Python applications in isolated environments
 ```console
 sudo apt install pipx
 pipx ensurepath
 pipx install meson
+```
+Note that:
+- Using a virtual environment or pipx is generally the safest approach as it avoids potential conflicts with system packages
+- The meson will be installed on /home/johnblue/.local/bin/meson instead of /usr/bin/meson
+```console
+# we can use soft-link to pretend to be a /usr/bin/meson
+cd /usr/bin/ && sudo ln -s /home/johnblue/.local/bin/meson meson
 ```
 
 ## Pre-install python package for tools
