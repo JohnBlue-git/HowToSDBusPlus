@@ -1,11 +1,11 @@
-option('list-users', type: 'feature', description: 'Build list-users')
-option('coroutine-example', type: 'feature', description: 'Build coroutine-example')
+option('list-users', type: 'feature', description: 'Build list-users', value : 'enabled')
+option('coroutine-example', type: 'feature', description: 'Build coroutine-example', value : 'enabled')
 
-option('asio-example', type: 'feature', description: 'Build asio-example')
-option('register-property', type: 'feature', description: 'Build register-property')
-option('get-all-properties', type: 'feature', description: 'Build get-all-properties')
+option('asio-example', type: 'feature', description: 'Build asio-example', value : 'enabled')
+option('register-property', type: 'feature', description: 'Build register-property', value : 'enabled')
+option('get-all-properties', type: 'feature', description: 'Build get-all-properties', value : 'enabled')
 
-option('calculator', type: 'feature', description: 'Build calculator')
+option('calculator', type: 'feature', description: 'Build calculator', value : 'disabled')
 
 # sample command with options:
-#rm -rf build && meson setup build -Dlist-users=disabled -Dcoroutine-example=disabled -Dasio-example=disabled -Dregister-property=disabled -Dget-all-properties=disabled
+#rm -rf build && meson setup build -Dcalculator=disabled

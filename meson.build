@@ -5,8 +5,6 @@ project('my-sdbusplus', 'cpp', 'c',
       'cpp_std=c++23',
       'warning_level=3',
       'werror=true',
-      #'tests=' + (meson.is_subproject() ? 'disabled' : 'auto'),
-      #'examples=' + (meson.is_subproject() ? 'disabled' : 'auto'),
     ],
     version: '1.0.0',
     meson_version: '>=1.1.1',
@@ -47,9 +45,9 @@ sdbusplus_dep = declare_dependency(
 
 
 # build tools
+
 subdir('tools')
-sdbusplusplus_prog = find_program('sdbus++', native: true)
-sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson', native: true)
+
 
 
 # build example ...
@@ -61,7 +59,6 @@ endif
 if not get_option('coroutine-example').disabled()
   subdir('coroutine-example')
 endif
-
 
 
 
