@@ -8,12 +8,34 @@ https://github.com/openbmc/sdbusplus
 ## Pre-install some dependency
 ```console
 sudo apt-get install libboost-all-dev
+# should >= 1.81
+dpkg -l | grep libboost
 
 sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
     python3 python3-pip python3-yaml python3-mako python3-inflection
 ```
 
-## Pre-install from Source (if the package manager doesn't have the latest version):
+## Pre-install Boost
+```console
+# (way 1)
+# check available version
+apt-cache policy libboost-all-dev
+# apt install
+sudo apt install libboost-all-dev=1.81
+
+# (way 2)
+# download source
+wget https://boostorg.jfrog.io/artifactory/main/release/1.81.0/source/boost_1_81_0.tar.gz
+# extract
+tar -xzf boost_1_81_0.tar.gz
+# navigate to folder
+cd boost_1_81_0
+# boostrap and build
+./bootstrap.sh
+./b2 install --prefix=/usr/local
+```
+
+## Pre-install Meson from Source (if the package manager doesn't have the latest version):
 Normally, just do the following ...
 ```console
 git clone https://github.com/mesonbuild/meson.git
@@ -21,14 +43,14 @@ cd meson
 python3 setup.py install --user
 ```
 To prevent conflicts between system package managers and Python’s package manager. Here are a few ways to resolve this issue: \
-(1 way) Use a Virtual Environment: Create a virtual environment to isolate your Python packages from the system packages
+(way 1) Use a Virtual Environment: Create a virtual environment to isolate your Python packages from the system packages
 ```console
 sudo apt install python3-venv
 python3 -m venv ~/myenv
 source ~/myenv/bin/activate
 pip install --upgrade meson
 ```
-(2 way) Use pipx: pipx is a tool to install and run Python applications in isolated environments
+(way 2) Use pipx: pipx is a tool to install and run Python applications in isolated environments
 ```console
 sudo apt install pipx
 pipx ensurepath
