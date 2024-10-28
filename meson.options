@@ -6,3 +6,6 @@ option('register-property', type: 'feature', description: 'Build register-proper
 option('get-all-properties', type: 'feature', description: 'Build get-all-properties')
 
 option('calculator', type: 'feature', description: 'Build calculator')
+
+# sample command with options:
+#rm -rf build && meson setup build -Dlist-users=disabled -Dcoroutine-example=disabled -Dasio-example=disabled -Dregister-property=disabled -Dget-all-properties=disabled

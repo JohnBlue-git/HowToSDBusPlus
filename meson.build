@@ -88,6 +88,14 @@ if not get_option('asio-example').disabled()
   subdir('asio-example')
 endif
 
+if not get_option('register-property').disabled()
+  subdir('register-property')
+endif
+
+if not get_option('get-all-properties').disabled()
+  subdir('get-all-properties')
+endif
+
 
 # build (async) example with gen ...
 

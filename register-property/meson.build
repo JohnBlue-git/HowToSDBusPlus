@@ -1,6 +1,6 @@
 
 executable(
-    'get-all-properties',
-    'get-all-properties.cpp',
+    'register-property',
+    'register-property.cpp',
     dependencies: asio_dep,
 )
