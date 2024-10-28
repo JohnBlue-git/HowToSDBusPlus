@@ -33,7 +33,9 @@ boost_dep = declare_dependency(
     dependencies: dependency('boost', required: false),
     compile_args: boost_compile_args)
 
+root_inc = include_directories('/usr/include', '/usr/local/include')
 sdbusplus_dep = declare_dependency(
+    include_directories: root_inc,
     dependencies: [
         boost_dep,
         libsystemd_pkg,
@@ -99,3 +101,4 @@ endif
 if not get_option('calculator').disabled()
   subdir('calculator')
 endif
+

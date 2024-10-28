@@ -5,7 +5,7 @@ option('asio-example', type: 'feature', description: 'Build asio-example', value
 option('register-property', type: 'feature', description: 'Build register-property', value : 'enabled')
 option('get-all-properties', type: 'feature', description: 'Build get-all-properties', value : 'enabled')
 
-option('calculator', type: 'feature', description: 'Build calculator', value : 'disabled')
+option('calculator', type: 'feature', description: 'Build calculator', value : 'enabled')
 
 # sample command with options:
 #rm -rf build && meson setup build -Dcalculator=disabled
