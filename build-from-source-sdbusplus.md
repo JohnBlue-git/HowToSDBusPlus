@@ -32,7 +32,7 @@ tar -xzf boost_1_81_0.tar.gz
 cd boost_1_81_0
 # boostrap and build
 ./bootstrap.sh
-./b2 install --prefix=/usr/local
+sudo ./b2 install --prefix=/usr
 ```
 
 ## Pre-install Meson from Source (if the package manager doesn't have the latest version):
