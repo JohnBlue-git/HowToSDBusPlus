@@ -34,6 +34,24 @@ cd boost_1_81_0
 sudo ./bootstrap.sh --prefix=/usr
 sudo ./b2 install --prefix=/usr
 ```
+Another extended way is to build as package and install via dpkg (then can be managed by dpkg and apt)
+```console
+# Bootstrap and Build Boost
+sudo ./bootstrap.sh --prefix=/usr
+sudo ./b2 --prefix=/usr
+
+# Create Debian Package: Now, use dh_make to create a Debian package. 
+# Choose "Single binary" by entering "s":
+dh_make --createorig -s -y
+
+# Customize and Build the Package
+# Edit the debian/control file to update the package details, and then build the package ...
+# (Once built, the .deb file will be in the parent directory)
+dpkg-buildpackage -us -uc
+
+#Install the Package
+sudo dpkg -i 
+```
 
 ## Pre-install Meson from Source (if the package manager doesn't have the latest version):
 Normally, just do the following ...
