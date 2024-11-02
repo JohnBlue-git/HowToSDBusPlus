@@ -31,7 +31,7 @@ tar -xzf boost_1_81_0.tar.gz
 # navigate to folder
 cd boost_1_81_0
 # boostrap and build
-audo ./bootstrap.sh --prefix=/usr
+sudo ./bootstrap.sh --prefix=/usr
 sudo ./b2 install --prefix=/usr
 ```
 
