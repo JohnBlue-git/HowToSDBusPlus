@@ -10,6 +10,8 @@ https://github.com/openbmc/sdbusplus
 sudo apt-get install libboost-all-dev
 # should >= 1.81
 dpkg -l | grep libboost
+#
+cat /usr/include/boost/version.h
 
 sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
     python3 python3-pip python3-yaml python3-mako python3-inflection
@@ -18,23 +20,46 @@ sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
 ## Pre-install Boost
 ```console
 # (way 1)
+
 # check available version
 apt-cache policy libboost-all-dev
+
 # apt install
 sudo apt install libboost-all-dev=1.81
+sudo apt-get install libboost-all-dev=1.81
+
+# to remove
+sudo apt remove libboost-all-dev
+sudo apt-get remove libboost-all-dev
+sudo apt-get autoremove
+
 
 # (way 2)
+
 # download source
 wget https://boostorg.jfrog.io/artifactory/main/release/1.81.0/source/boost_1_81_0.tar.gz
+
 # extract
 tar -xzf boost_1_81_0.tar.gz
+
 # navigate to folder
 cd boost_1_81_0
-# boostrap and build
+
+# boostrap and build (install b2 to /usr/bin)
 sudo ./bootstrap.sh --prefix=/usr
+
+# install (to /usr/lib and /usr/include/boost)
 sudo ./b2 install --prefix=/usr
+# install to local
+# prefix=/usr/local
+
+# to remove
+# sudo rm -rf /usr/include/boost
+# sudo rm -rf /usr/lib/libboost*
+# library installed by apt may lie in
+# sudo rm -rf /usr/lib/x86_64-linux-gnu/libboost*
 ```
-Another extended way is to build as package and install via dpkg (then can be managed by dpkg and apt)
+Another way is to build as package and install via dpkg (then can be managed by dpkg and apt)
 ```console
 # Bootstrap and Build Boost
 sudo ./bootstrap.sh --prefix=/usr
@@ -49,8 +74,13 @@ dh_make --createorig -s -y
 # (Once built, the .deb file will be in the parent directory)
 dpkg-buildpackage -us -uc
 
-#Install the Package
-sudo dpkg -i 
+# Install the Package
+sudo dpkg -i
+
+# The information will be stored in
+# /var/lib/dpkg/available: Lists available packages1
+# /var/lib/dpkg/status:    Contains the statuses of available packages1
+# /var/lib/dpkg/triggers:  Manages package triggers
 ```
 
 ## Pre-install Meson from Source (if the package manager doesn't have the latest version):
