@@ -26,12 +26,10 @@ apt-cache policy libboost-all-dev
 
 # apt install
 sudo apt install libboost-all-dev=1.81
-sudo apt-get install libboost-all-dev=1.81
 
 # to remove
 sudo apt remove libboost-all-dev
-sudo apt-get remove libboost-all-dev
-sudo apt-get autoremove
+sudo apt autoremove
 
 
 # (way 2)
