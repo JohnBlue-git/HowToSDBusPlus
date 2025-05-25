@@ -81,6 +81,12 @@ assert(
     'Boost is required when ... are enabled'
 )
 
+# build example ...
+
+if not get_option('simple-dbuscall').disabled()
+  subdir('simple-dbuscall')
+endif
+
 # build async example ...
 
 if not get_option('asio-example').disabled()

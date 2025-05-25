@@ -10,11 +10,19 @@ https://github.com/openbmc/sdbusplus
 sudo apt-get install libboost-all-dev
 # should >= 1.81
 dpkg -l | grep libboost
-#
+# or
 cat /usr/include/boost/version.h
 
-sudo apt install git meson libtool pkg-config g++ libsystemd-dev \
-    python3 python3-pip python3-yaml python3-mako python3-inflection
+sudo apt install git meson libtool pkg-config
+
+# systemd: libsystemd-dev
+# libsystemd-dev: libcap-dev(sys/capability.h), gperf
+sudo apt install g++ gperf libcap-dev libsystemd-dev
+
+# python
+sudo apt install python3 python3-pip python3-yaml python3-mako python3-inflection
+# python3-xyz or xyz
+pip3 install mako inflection
 ```
 
 ## Pre-install Boost
@@ -31,11 +39,10 @@ sudo apt install libboost-all-dev=1.81
 sudo apt remove libboost-all-dev
 sudo apt autoremove
 
-
 # (way 2)
 
 # download source
-wget https://boostorg.jfrog.io/artifactory/main/release/1.81.0/source/boost_1_81_0.tar.gz
+wget https://archives.boost.io/release/1.81.0/source/boost_1_81_0.tar.gz
 
 # extract
 tar -xzf boost_1_81_0.tar.gz
@@ -65,7 +72,9 @@ sudo ./b2 --prefix=/usr
 
 # Create Debian Package: Now, use dh_make to create a Debian package. 
 # Choose "Single binary" by entering "s":
-dh_make --createorig -s -y
+# Please move boost_1_81_0 to boost_1.81.0 for dh_make to find the package name and version, the current directory
+needs to be in the format of <package>-<version>
+dh_make -p boost_1.81.0 --createorig -s -y
 
 # Customize and Build the Package
 # Edit the debian/control file to update the package details, and then build the package ...
@@ -86,7 +95,10 @@ Normally, just do the following ...
 ```console
 git clone https://github.com/mesonbuild/meson.git
 cd meson
+# this will install in /home/codespace/.local/current/bin/meson
 python3 setup.py install --user
+# this will install in /home/codespace/.python/current/bin/meson
+python3 setup.py install
 ```
 To prevent conflicts between system package managers and Python’s package manager. Here are a few ways to resolve this issue: \
 (way 1) Use a Virtual Environment: Create a virtual environment to isolate your Python packages from the system packages
@@ -94,7 +106,7 @@ To prevent conflicts between system package managers and Python’s package mana
 sudo apt install python3-venv
 python3 -m venv ~/myenv
 source ~/myenv/bin/activate
-pip install --upgrade meson
+pip3 install --upgrade meson
 ```
 (way 2) Use pipx: pipx is a tool to install and run Python applications in isolated environments
 ```console
@@ -108,6 +120,25 @@ Note that:
 ```console
 # we can use soft-link to pretend to be a /usr/bin/meson
 cd /usr/bin/ && sudo ln -s /home/johnblue/.local/bin/meson meson
+```
+
+## Pre-install libsystemd-dev 
+libsystemd-dev shall upgrade to a newer version (you need version 253 or higher)
+```
+# check version
+dpkg -l | grep libsystemd-dev
+
+# pre-install
+pip3 install --user jinja2
+
+# install from source code
+git clone https://github.com/systemd/systemd.git
+cd systemd
+git checkout v253
+env PATH=/usr/bin:$PATH meson setup build
+cd build
+ninja
+sudo ninja install
 ```
 
 ## Pre-install python package for tools
@@ -149,18 +180,20 @@ gcc --version
 ## Clone the lbrary source
 ```console
 git clone https://github.com/openbmc/sdbusplus.git
+cd sdbusplus
 ```
 
 ## Built via meson
 Optionally, building the tests and examples can be disabled by passing -Dtests=disabled and -Dexamples=disabled respectively to meson.
 ```console
-meson setup --reconfigure build
+sudo meson setup --reconfigure build
 cd build
-ninja
+sudo ninja
 ninja test
-ninja install
+sudo ninja install
+# because we have to use sudo finally, sudo all the command is more convient
 ```
-The sdbus++ application is installed as a standard Python package using setuptools
+Some sdbus++ applications will need to be installed as a standard Python package using setuptools
 ```console
 cd tools
 ./setup.py install

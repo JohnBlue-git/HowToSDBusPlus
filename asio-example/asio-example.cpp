@@ -1,3 +1,4 @@
+#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/spawn.hpp>
 #include <sdbusplus/asio/connection.hpp>
@@ -107,7 +108,7 @@ void do_start_async_ipmi_call(std::shared_ptr<sdbusplus::asio::connection> conn,
     std::vector<uint8_t> commandData = {4, 3, 2, 1};
     method.append(netFn, lun, cmd, commandData, options);
     boost::system::error_code ec;
-    sdbusplus::message_t reply = conn->async_send(method, yield[ec]);
+    sdbusplus::message_t reply = conn->async_send_yield(method, yield[ec]);
     std::tuple<uint8_t, uint8_t, uint8_t, uint8_t, std::vector<uint8_t>>
         tupleOut;
     try
@@ -372,15 +373,24 @@ int client()
 
     // set up a client to make an async call to the server
     // using coroutines (userspace cooperative multitasking)
-    boost::asio::spawn(io, [conn](boost::asio::yield_context yield) {
-        do_start_async_method_call_one(conn, yield);
-    });
-    boost::asio::spawn(io, [conn](boost::asio::yield_context yield) {
-        do_start_async_ipmi_call(conn, yield);
-    });
-    boost::asio::spawn(io, [conn](boost::asio::yield_context yield) {
-        do_start_async_to_yield(conn, yield);
-    });
+    (void)boost::asio::spawn(
+        io,
+        [conn](boost::asio::yield_context yield) {
+            do_start_async_method_call_one(conn, yield);
+        },
+        boost::asio::detached);
+    (void)boost::asio::spawn(
+        io,
+        [conn](boost::asio::yield_context yield) {
+            do_start_async_ipmi_call(conn, yield);
+        },
+        boost::asio::detached);
+    (void)boost::asio::spawn(
+        io,
+        [conn](boost::asio::yield_context yield) {
+            do_start_async_to_yield(conn, yield);
+        },
+        boost::asio::detached);
 
     conn->async_method_call(
         [](boost::system::error_code ec, int32_t testValue) {

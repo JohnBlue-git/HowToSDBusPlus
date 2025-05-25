@@ -25,7 +25,7 @@ int main() {
         auto timeout_duration = std::chrono::milliseconds(5000);
 
         // Call the method with timeout and read the response
-        auto reply = bus.call_with_timeout(method, timeout_duration);
+        auto reply = bus.call(method, timeout_duration);
         std::variant<std::vector<std::string>> propertyValue;
         reply.read(propertyValue);
 
