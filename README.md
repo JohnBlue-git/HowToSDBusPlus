@@ -125,13 +125,17 @@ dbus-send --system \
 
 ## Start dbus if it is not yet started
 ```bash
+# normally
 sudo systemctl start dbus
+# or
 sudo service dbus start
 ```
 
 ### Example: [simple-dbuscall](simple-dbuscall/README.md)
 
 ### Example: [use-systemd1](use-systemd1/README.md)
+
+### Example: [emit-signal](emit-signal/README.md)
 
 ### Still organizing ...
 - asio-example

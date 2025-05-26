@@ -62,6 +62,10 @@ if not get_option('use-systemd1').disabled()
   subdir('use-systemd1')
 endif
 
+if not get_option('emit-signal').disabled()
+  subdir('emit-signal')
+endif
+
 if not get_option('list-users').disabled()
   subdir('list-users')
 endif

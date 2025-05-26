@@ -2,6 +2,8 @@ option('simple-dbuscall', type: 'feature', description: 'Build simple-dbuscall',
 
 option('use-systemd1', type: 'feature', description: 'Build use-systemd1', value : 'enabled')
 
+option('emit-signal', type: 'feature', description: 'Build emit-signal', value : 'enabled')
+
 option('list-users', type: 'feature', description: 'Build list-users', value : 'enabled')
 
 option('coroutine-example', type: 'feature', description: 'Build coroutine-example', value : 'enabled')
@@ -15,4 +17,4 @@ option('get-all-properties', type: 'feature', description: 'Build get-all-proper
 option('calculator', type: 'feature', description: 'Build calculator', value : 'enabled')
 
 # sample command with options:
-#rm -rf build && meson setup build -Dcalculator=disabled -Dasio-example=disabled
+#rm -rf build && meson setup build --reconfigure -Dcalculator=disabled -Dasio-example=disabled
