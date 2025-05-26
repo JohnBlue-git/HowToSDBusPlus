@@ -54,6 +54,14 @@ subdir('tools')
 
 # build example ...
 
+if not get_option('simple-dbuscall').disabled()
+  subdir('simple-dbuscall')
+endif
+
+if not get_option('use-systemd1').disabled()
+  subdir('use-systemd1')
+endif
+
 if not get_option('list-users').disabled()
   subdir('list-users')
 endif
@@ -80,12 +88,6 @@ assert(
     has_asio,
     'Boost is required when ... are enabled'
 )
-
-# build example ...
-
-if not get_option('simple-dbuscall').disabled()
-  subdir('simple-dbuscall')
-endif
 
 # build async example ...
 

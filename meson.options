@@ -1,5 +1,7 @@
 option('simple-dbuscall', type: 'feature', description: 'Build simple-dbuscall', value : 'enabled')
 
+option('use-systemd1', type: 'feature', description: 'Build use-systemd1', value : 'enabled')
+
 option('list-users', type: 'feature', description: 'Build list-users', value : 'enabled')
 
 option('coroutine-example', type: 'feature', description: 'Build coroutine-example', value : 'enabled')
