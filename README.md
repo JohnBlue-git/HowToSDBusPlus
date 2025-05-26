@@ -16,29 +16,6 @@ meson setup build
 cd build && ninja
 ```
 
-## Examples and How to use
-
-## Start dbus if it is not yet started
-```bash
-suudo systemctl start dbus
-sudo service dbus start
-```
-
-### simple-dbuscall
-It is an exmple to create a dbus call (with timeout)
-```bash
-cd simple_dbuscall
-./simple_dbuscall
-./simple_dbuscall_timeout
-```
-
-### Still organizing ...
-- asio-example
-- calculator
-- coroutine-example
-- get-all-properties
-- list-users
-- register-property
 
 ## Here are common dbus commands to check whether the proprams work as expected
 
@@ -143,3 +120,23 @@ dbus-send --system \
 
 # no signal method
 ```
+
+## Examples and How to use
+
+## Start dbus if it is not yet started
+```bash
+sudo systemctl start dbus
+sudo service dbus start
+```
+
+### Example: [simple-dbuscall](simple-dbuscall/README.md)
+
+### Example: [use-systemd1](use-systemd1/README.md)
+
+### Still organizing ...
+- asio-example
+- calculator
+- coroutine-example
+- get-all-properties
+- list-users
+- register-property

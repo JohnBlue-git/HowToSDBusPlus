@@ -1,3 +1,20 @@
+## How to use
+```bash
+cd use-systemd1
+./get_service_status_cmd
+./get_service_status
+```
+
+## Equivalent dbus command
+```bash
+busctl call -j \
+org.freedesktop.systemd1 \
+/org/freedesktop/systemd1 \
+org.freedesktop.systemd1.Manager \
+ListUnitsByNames s \
+<service name>
+```
+
 ## About `org.freedesktop.systemd1.service`
 I have presented ways to get service status via `org.freedesktop.systemd1.service`.
 \
