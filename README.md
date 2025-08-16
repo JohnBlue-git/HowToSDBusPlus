@@ -23,7 +23,8 @@ The [sdbusplus] library builds on top of the [sd-bus] library to create a modern
 To build examples
 ```console
 meson setup build --wipe
-cd build && ninja
+cd build
+ninja -j2
 ```
 
 

@@ -44,6 +44,12 @@ sdbusplus_dep = declare_dependency(
     ],
 )
 
+
+
+# build tools
+
+subdir('tools')
+
 # build example ...
 
 if not get_option('simple-dbuscall').disabled()

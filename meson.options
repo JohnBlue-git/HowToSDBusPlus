@@ -14,7 +14,7 @@ option('register-property', type: 'feature', description: 'Build register-proper
 
 option('get-all-properties', type: 'feature', description: 'Build get-all-properties', value : 'enabled')
 
-option('calculator', type: 'feature', description: 'Build calculator', value : 'enabled')
+option('calculator', type: 'feature', description: 'Build calculator', value : 'disabled')
 
 # sample command with options:
 #rm -rf build && meson setup build --reconfigure -Dcalculator=disabled -Dasio-example=disabled
