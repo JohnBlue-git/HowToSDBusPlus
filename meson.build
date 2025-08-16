@@ -48,7 +48,7 @@ sdbusplus_dep = declare_dependency(
 
 # build tools
 
-subdir('tools')
+#subdir('tools')
 
 
 

@@ -1,3 +1,4 @@
 [wrap-git]
+directory = googletest
 url = https://github.com/google/googletest
 revision = HEAD

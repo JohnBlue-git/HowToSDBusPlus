@@ -4,7 +4,7 @@
 Pe-install
 [build-from-source-sdbusplus.md](build-from-source-sdbusplus.md)
 
-Another quick choice is to use docker image (i provides)
+Another quick choice is to use docker image created via [Dockerfile](Dockerfile)
 ```console
 # run
 docker run -it johnbluedocker/sdbusplus-dev
@@ -22,7 +22,7 @@ The [sdbusplus] library builds on top of the [sd-bus] library to create a modern
 \
 To build examples
 ```console
-meson setup build
+meson setup build --wipe
 cd build && ninja
 ```
 
