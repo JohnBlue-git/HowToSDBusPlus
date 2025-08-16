@@ -1,6 +1,6 @@
 
-# About this mark down
-To note the buuild process of sdbusplus library, and to explain the meson build script regard building sdbusplus library.
+# About this markdown
+To note the build process of sdbusplus library, and to explain the meson build script regard building sdbusplus library.
 
 ## Official website
 https://github.com/openbmc/sdbusplus
