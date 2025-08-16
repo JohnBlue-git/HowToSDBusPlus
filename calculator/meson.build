@@ -1,4 +1,7 @@
 
+sdbusplusplus_prog = find_program('sdbus++', native: true)
+sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson', native: true)
+
 generated_sources = []
 generated_others = []
 subdir('gen')
