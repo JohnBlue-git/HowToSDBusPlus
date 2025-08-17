@@ -68,6 +68,8 @@ RUN git clone https://github.com/openbmc/sdbusplus.git /opt/sdbusplus && \
     meson setup build && \
     ninja -C build && \
     ninja -C build install && \
+    cd /opt/sdbusplus/tools && \
+    ./setup.py install && \
     cd / && rm -rf /opt/sdbusplus
 
 # Default to bash
