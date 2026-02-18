@@ -154,6 +154,8 @@ sudo service dbus start
 
 ### Example: [emit-signal](emit-signal/README.md)
 
+### Example: [caculator](caculator/README.md)
+
 ### Still organizing ...
 - asio-example
 - calculator
