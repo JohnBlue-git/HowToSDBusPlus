@@ -9,6 +9,12 @@ Another quick choice is to use docker image created via [Dockerfile](Dockerfile)
 # run
 docker run -it johnbluedocker/sdbusplus-dev
 
+# Mounts your current local directory into /workspace inside the container
+docker run -it \
+  -v $(pwd):/workspace \
+  johnbluedocker/sdbusplus-dev \
+  /bin/bash
+
 # exit
 exit
 Crtl + D

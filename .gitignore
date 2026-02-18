@@ -1,8 +1,2 @@
 # Ignore the entire folder
 build/
-tools/
-systemd/
-sdbusplus/
-meson/
-boost_*/
-boost_*

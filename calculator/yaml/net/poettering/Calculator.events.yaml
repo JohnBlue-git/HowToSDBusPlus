@@ -15,8 +15,6 @@ errors:
 
 events:
     - name: Cleared
-      severity: informational
-      errno: EIO
       en:
           description: The calculator is cleared.
           message: The calculator is cleared.

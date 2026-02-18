@@ -111,4 +111,3 @@ endif
 if not get_option('calculator').disabled()
   subdir('calculator')
 endif
-
