@@ -1,6 +1,21 @@
 
 ## How to build
 
+Pre-run
+```bash
+# Start DBus by service
+sudo service dbus start
+service --status-all
+# Reload (if service is running):
+sudo service dbus reload
+
+# Start DBus by systemd
+systemctl start dbus
+systemctl
+# Reload (if service is running):
+sudo systemctl reload dbus
+```
+
 Pe-install
 [build-from-source-sdbusplus.md](build-from-source-sdbusplus.md)
 
@@ -9,9 +24,14 @@ Another quick choice is to use docker image created via [Dockerfile](Dockerfile)
 # run
 docker run -it johnbluedocker/sdbusplus-dev
 
+# Mount the host's D-Bus socket into the container
+# Mount the host's D-Bus configuration /etc/dbus-1/system.d
 # Mounts your current local directory into /workspace inside the container
 docker run -it \
+  -v /var/run/dbus:/var/run/dbus \
+  -v /etc/dbus-1/system.d:/etc/dbus-1/system.d \
   -v $(pwd):/workspace \
+  -e DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket \
   johnbluedocker/sdbusplus-dev \
   /bin/bash
 
@@ -31,6 +51,7 @@ To build examples
 meson setup build --wipe
 cd build
 ninja -j2
+sudo ninja install
 ```
 
 
