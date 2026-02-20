@@ -81,7 +81,7 @@ class CalculatorService {
     std::unique_ptr<sdbusplus::asio::dbus_interface> calculatorIface_;
 
     const char* serviceName_ = "xyz.openbmc_project.Calculator";
-    const char* objectPath_ = "/calculator";
+    const char* objectPath_ = "/xyz/openbmc_project/calculator";
     const char* interfaceName_ = "xyz.openbmc_project.Calculator";
 
     int64_t lastResult_ = 0;
