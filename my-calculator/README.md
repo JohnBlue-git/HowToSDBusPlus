@@ -143,6 +143,12 @@ throw sdbusplus::xyz::openbmc_project::Calculator::Error::DivisionByZero();
 
 This will result in a formal DBus error being sent back to the caller instead of a standard return.
 
+### stackful VS stackless Coroutine
+
+While sdbusplus supports C++20 coroutines, the current register_method implementation in many versions of sdbusplus expects you to use boost::asio::yield_context (stackful) for automatic async handling, or it requires a specific template helper for stackless (co_return) coroutines that your current environment might not be implicitly mapping.
+
+To fix this and stick to the C++20/C++23 standard while satisfying the template constraints of sdbusplus, we will use the yield_context approach. It is functionally identical for your needs but has built-in traits that sdbusplus understands for mapping types to DBus.
+
 ---
 
 ## How to Compile

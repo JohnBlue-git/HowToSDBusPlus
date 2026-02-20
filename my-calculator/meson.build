@@ -14,7 +14,8 @@ project('my-sdbusplus', 'cpp', 'c',
 libsystemd_pkg = dependency('libsystemd')
 nlohmann_json_dep = dependency('nlohmann_json', include_type: 'system')
 sdbusplus_pkg = dependency('sdbusplus', required: true)
-boost_dep = dependency('boost', required: true)
+# Important: boost yield_context needs boost_coroutine and boost_context
+boost_dep = dependency('boost', modules: ['coroutine', 'context'])
 
 # --- Boost Configuration ---
 # Since you're likely using sdbusplus::asio, these flags are standard

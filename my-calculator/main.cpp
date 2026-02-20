@@ -1,4 +1,5 @@
 #include <iostream>
+#include <boost/asio/spawn.hpp> 
 #include <sdbusplus/asio/connection.hpp>
 #include <sdbusplus/asio/object_server.hpp>
 #include <sdbusplus/bus.hpp>
@@ -16,13 +17,11 @@ class CalculatorService {
 
   private:
     void setupInterface() {
-        // Use the initialization lambda style
         calculatorIface_ = objServer_.add_unique_interface(
             objectPath_, interfaceName_,
             [this](sdbusplus::asio::dbus_interface& i) {
-                // --- Properties ---
                 
-                // LastResult: Read/Write
+                // Properties (Synchronous lambdas are preferred for performance)
                 i.register_property_rw<int64_t>(
                     "LastResult", sdbusplus::vtable::property_::emits_change,
                     [this](const auto& newVal, auto& /*currVal*/) {
@@ -31,64 +30,50 @@ class CalculatorService {
                     },
                     [this](const auto& /*currVal*/) { return lastResult_; });
 
-                // Status: Read-Only Constant
                 i.register_property_r<std::string>(
                     "Status", sdbusplus::vtable::property_::const_,
                     [this](const auto& /*currVal*/) { return status_; });
 
-                // Owner: Read/Write
-                i.register_property_rw<std::string>(
-                    "Owner", sdbusplus::vtable::property_::emits_change,
-                    [this](const auto& newVal, auto& /*currVal*/) {
-                        if (newVal == "forbidden") {
-                            throw sdbusplus::exception::SdBusError(EPERM, "PermissionDenied");
+                // Methods using yield_context (The sdbusplus-native async way)
+                // This satisfies the "No dbus type conversion" error.
+                
+                i.register_method("Multiply", 
+                    [this](boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+                        lastResult_ = x * y;
+                        return lastResult_; // Returns int64_t directly
+                    });
+
+                i.register_method("Divide", 
+                    [this](boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+                        if (y == 0) {
+                            throw sdbusplus::exception::SdBusError(EDOM, "DivisionByZero");
                         }
-                        owner_ = newVal;
-                        return true;
-                    },
-                    [this](const auto& /*currVal*/) { return owner_; });
+                        lastResult_ = x / y;
+                        return lastResult_;
+                    });
 
-                // --- Methods ---
-
-                i.register_method("Multiply", [this](int64_t x, int64_t y) {
-                    lastResult_ = x * y;
-                    return lastResult_;
-                });
-
-                i.register_method("Divide", [this](int64_t x, int64_t y) {
-                    if (y == 0) {
-                        throw sdbusplus::exception::SdBusError(EDOM, "DivisionByZero");
-                    }
-                    lastResult_ = x / y;
-                    return lastResult_;
-                });
-
-                i.register_method("Clear", [this, &i]() {
-                    int64_t oldVal = lastResult_;
-                    lastResult_ = 0;
-                    
-                    // Emit signal
-                    auto s = i.new_signal("Cleared");
-                    s.append(oldVal);
-                    s.signal_send();
-                });
+                i.register_method("Clear", 
+                    [this, &i](boost::asio::yield_context /*yield*/) {
+                        int64_t oldVal = lastResult_;
+                        lastResult_ = 0;
+                        
+                        auto s = i.new_signal("Cleared");
+                        s.append(oldVal);
+                        s.signal_send();
+                    });
             });
     }
 
-    // Connection & Server
     std::shared_ptr<sdbusplus::asio::connection> conn_;
     sdbusplus::asio::object_server objServer_;
     std::unique_ptr<sdbusplus::asio::dbus_interface> calculatorIface_;
 
-    // DBus Metadata
     const char* serviceName_ = "xyz.openbmc_project.Calculator";
     const char* objectPath_ = "/calculator";
     const char* interfaceName_ = "xyz.openbmc_project.Calculator";
 
-    // Internal State
     int64_t lastResult_ = 0;
     std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
-    std::string owner_ = "None";
 };
 
 int main() {
