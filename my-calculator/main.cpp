@@ -39,6 +39,18 @@ class CalculatorService {
                 
                 i.register_method("Multiply", 
                     [this](boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+                        // 1.
+                        // Simulate a 2-second cloud calculation
+                        // boost::asio::steady_timer timer(conn_->get_io_context());
+                        // timer.expires_after(std::chrono::seconds(2));
+                        // This uses 'yield' to suspend!
+                        // timer.async_wait(yield);
+                        // 2.
+                        // This suspends THIS lambda, but let's other DBus requests through
+                        // double taxRate = sdbusplus::asio::getProperty<double>(
+                        //     *conn_, destService, destPath, destIface, "Value", yield[ec]);
+                        // lastResult_ = ... taxRate;
+
                         lastResult_ = x * y;
                         return lastResult_; // Returns int64_t directly
                     });
