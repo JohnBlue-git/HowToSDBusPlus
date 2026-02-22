@@ -40,10 +40,15 @@ sdbusplus_dep = declare_dependency(
 )
 
 # --- Build Executable ---
-# Only compiles main.cpp; no YAML or generated headers included.
 executable(
-    'calculator-server',
-    'main.cpp',
+    'boost_asio_caculator',
+    'boost_asio_caculator.cpp',
+    dependencies: sdbusplus_dep,
+    install: true
+)
+executable(
+    'sdbusplus_async_caculator',
+    'sdbusplus_async_caculator.cpp',
     dependencies: sdbusplus_dep,
     install: true
 )
