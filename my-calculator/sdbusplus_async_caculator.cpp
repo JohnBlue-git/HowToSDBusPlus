@@ -2,9 +2,9 @@
 #include <tuple>
 #include <variant>
 #include <sdbusplus/async.hpp>
-#include <sdbusplus/exception.hpp>
 #include <sdbusplus/vtable.hpp>
 #include <sdbusplus/server/interface.hpp>
+#include <sdbusplus/exception.hpp>
 
 class SdbusplusAsyncCalculatorService {
   public:
