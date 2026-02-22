@@ -9,28 +9,43 @@
 class SdbusplusAsyncCalculatorService {
   public:
 
-    explicit SdbusplusAsyncCalculatorService(sdbusplus::async::context& ctx) : ctx_(ctx) {
+    explicit SdbusplusAsyncCalculatorService(sdbusplus::async::context& ctx) :
+        ctx_(ctx)
+    {
+        ctx_.get_bus().request_name(serviceName_);
         setupInterface();
-        ctx_.get_bus().request_name("xyz.openbmc_project.Calculator");
     }
 
     void setupInterface() {
         static const sdbusplus::vtable_t vtable[] = {
             sdbusplus::vtable::start(),
-            sdbusplus::vtable::property("LastResult", "x", 
+
+            sdbusplus::vtable::property("LastResult", "x",
                                         get_property<&SdbusplusAsyncCalculatorService::lastResult_>,
                                         set_property<&SdbusplusAsyncCalculatorService::lastResult_>,
                                         sdbusplus::vtable::property_::emits_change),
-            sdbusplus::vtable::method("Multiply", "xx", "x", 
+            sdbusplus::vtable::property("Status", "s", 
+                                        get_property<&SdbusplusAsyncCalculatorService::status_>,
+                                        sdbusplus::vtable::property_::emits_change),
+            sdbusplus::vtable::property("Owner", "s", 
+                                        get_property<&SdbusplusAsyncCalculatorService::owner_>,
+                                        set_property<&SdbusplusAsyncCalculatorService::owner_>,
+                                        sdbusplus::vtable::property_::emits_change),
+
+            sdbusplus::vtable::method("Multiply", "xx", "x",
                 handle_method<multiply_t, &SdbusplusAsyncCalculatorService::multiply>),
-            sdbusplus::vtable::method("Divide", "xx", "x", 
+            sdbusplus::vtable::method("Divide", "xx", "x",
                 handle_method<divide_t, &SdbusplusAsyncCalculatorService::divide>),
+            sdbusplus::vtable::method("Clear", "", "",
+                handle_method<clear_t, &SdbusplusAsyncCalculatorService::clear>),
+
+            sdbusplus::vtable::signal("Cleared", "x"),
+
             sdbusplus::vtable::end()
         };
 
         interface_ = std::make_unique<sdbusplus::server::interface::interface>(
-            ctx_.get_bus(), "/xyz/openbmc_project/calculator", 
-            "xyz.openbmc_project.Calculator", vtable, this);
+            ctx_.get_bus(), objectPath_, interfaceName_, vtable, this);
     }
 
     // --- Define Method Traits ---
@@ -43,6 +58,11 @@ class SdbusplusAsyncCalculatorService {
     struct divide_t {
         using value_types = std::tuple<int64_t, int64_t>;
         using return_type = int64_t;
+    };
+
+    struct clear_t {
+        using value_types = std::tuple<>;
+        using return_type = void;
     };
 
   private:
@@ -87,7 +107,10 @@ class SdbusplusAsyncCalculatorService {
         try {
             // Use 'read' with the tuple
             typename T::value_types args;
-            msg.read(args); 
+            // ONLY call read if there are actually arguments to read
+            if constexpr (std::tuple_size_v<typename T::value_types> > 0) {
+                msg.read(args); 
+            }
 
             // By using ctx_.spawn, you tell the event loop:
             // "Take this coroutine and run it whenever you have a moment.
@@ -95,13 +118,29 @@ class SdbusplusAsyncCalculatorService {
             self->ctx_.spawn(
                 [](SdbusplusAsyncCalculatorService* s, sdbusplus::message_t m_inner, typename T::value_types a) 
                 -> sdbusplus::async::task<> {
-                    auto result = co_await std::apply(
-                        [s](auto&&... args) { return (s->*MemberFunc)(args...); }, 
-                        a);
-                    
-                    auto reply = m_inner.new_method_return();
-                    reply.append(result);
-                    reply.method_return();
+                    // works with void return type
+                    if constexpr (std::is_void_v<typename T::return_type>) {
+                        // std::apply works with empty tuples if the lambda accepts zero args
+                        co_await std::apply(
+                            [s](auto&&... params) { 
+                                return (s->*MemberFunc)(std::forward<decltype(params)>(params)...); 
+                            }, a);
+                        
+                        auto reply = m_inner.new_method_return();
+                        reply.method_return();
+                    }
+                    // works with non void return type
+                    else {
+                        // std::apply works with empty tuples if the lambda accepts zero args
+                        auto result = co_await std::apply(
+                            [s](auto&&... params) { 
+                                return (s->*MemberFunc)(std::forward<decltype(params)>(params)...); 
+                            }, a);
+                        
+                        auto reply = m_inner.new_method_return();
+                        reply.append(result);
+                        reply.method_return();
+                    }
                     co_return;
                 }(self, std::move(msg), std::move(args))
             );
@@ -125,11 +164,36 @@ class SdbusplusAsyncCalculatorService {
         co_return lastResult_;
     }
 
+    sdbusplus::async::task<void> clear() {
+        // ermission Check
+        if (!owner_.empty() && owner_ != "root") { 
+            throw sdbusplus::exception::SdBusError(EACCES, "PermissionDenied");
+        }
+
+        // Clear logic
+        int64_t oldVal = lastResult_;
+        lastResult_ = 0;
+        
+        // Emit Signal "Cleared" manually
+        auto s = interface_->new_signal("Cleared");
+        s.append(oldVal);
+        s.signal_send();
+
+        co_return;
+    }
+
     // --- Variables ---
 
     sdbusplus::async::context& ctx_;
     std::unique_ptr<sdbusplus::server::interface::interface> interface_;
+
+    const char* serviceName_ = "xyz.openbmc_project.Calculator";
+    const char* objectPath_ = "/xyz/openbmc_project/calculator";
+    const char* interfaceName_ = "xyz.openbmc_project.Calculator";
+
     int64_t lastResult_ = 0;
+    std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
+    std::string owner_ = "root";
 };
 
 int main() {
