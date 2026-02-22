@@ -41,6 +41,14 @@ methods:
                 The result of (x/y).
       errors:
           - self.DivisionByZero
+    - name: Express
+      description: >
+          Express the result by base.
+      returns:
+          - name: z
+            type: string
+            description: >
+                The result by base.
     - name: Clear
       flags:
           - unprivileged
@@ -60,6 +68,13 @@ properties:
           - const
       description: >
           The current state of the Calculator.
+    - name: enum[self.Base]
+      type: string
+      default: Decimal
+      flags:
+          - const
+      description: >
+          The number base to show by method Express.
     - name: Owner
       type: string
       description: >
@@ -76,6 +91,19 @@ signals:
             description: >
                 Value of LastReset prior to Clear.
 enumerations:
+    - name: Base
+      description: >
+          Number base.
+      values:
+          - name: Decimal
+            description: >
+                Decimal base.
+          - name: Binary
+            description: >
+                Binary base.
+          - name: Heximal
+            description: >
+                Heximal base.
     - name: State
       description: >
           Identifies if the service has encountered an error or not.

@@ -23,33 +23,44 @@ class BoostAsioCalculatorService {
             [this](sdbusplus::asio::dbus_interface& i) {
                 
                 // Properties (Synchronous lambdas are preferred for performance)
+
                 i.register_property_rw<int64_t>(
                     "LastResult", sdbusplus::vtable::property_::emits_change,
-                    [this](const auto& newVal, auto& /*currVal*/) {
-                        lastResult_ = newVal;
-                        return true;
+                    [this](const auto& newVal, auto& currVal) {
+                        return this->set_property<&BoostAsioCalculatorService::lastResult_>(newVal, currVal);
                     },
-                    [this](const auto& /*currVal*/) { return lastResult_; });
+                    [this](const auto& currVal) {
+                        return this->get_property<&BoostAsioCalculatorService::lastResult_>(currVal);
+                    });
 
                 i.register_property_r<std::string>(
                     "Status", sdbusplus::vtable::property_::const_,
-                    [this](const auto& /*currVal*/) { return status_; });
+                    [this](const auto& currVal) {
+                        return this->get_property<&BoostAsioCalculatorService::status_>(currVal);
+                    });
+
+                i.register_property_r<std::string>(
+                    "Base", sdbusplus::vtable::property_::const_,
+                    [this](const auto& currVal) {
+                        return this->get_property<&BoostAsioCalculatorService::base_>(currVal);
+                    });
 
                 i.register_property_rw<std::string>(
-                "Owner", sdbusplus::vtable::property_::emits_change,
-                [this](const auto& newVal, auto& /*currVal*/) {
-                    // Logic: Only root or the current owner can change ownership
-                    // For simplicity in this example, we just set it:
-                    owner_ = newVal;
-                    return true;
-                },
-                [this](const auto& /*currVal*/) { return owner_; });
+                    "Owner", sdbusplus::vtable::property_::emits_change,
+                    [this](const auto& newVal, auto& currVal) {
+                        // Logic: Only root or the current owner can change ownership
+                        // For simplicity in this example, we just set it:
+                        return this->set_property<&BoostAsioCalculatorService::owner_>(newVal, currVal);
+                    },
+                    [this](const auto& currVal) {
+                        return this->get_property<&BoostAsioCalculatorService::owner_>(currVal);
+                    });
 
                 // Methods using yield_context (The sdbusplus-native async way)
                 // This satisfies the "No dbus type conversion" error.
                 
-                i.register_method("Multiply", 
-                    [this](boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+                i.register_method("Multiply",
+                    [this](boost::asio::yield_context yield, int64_t x, int64_t y) {
                         // 1.
                         // Simulate a 2-second cloud calculation
                         // boost::asio::steady_timer timer(conn_->get_io_context());
@@ -62,38 +73,75 @@ class BoostAsioCalculatorService {
                         //     *conn_, destService, destPath, destIface, "Value", yield[ec]);
                         // lastResult_ = ... taxRate;
 
-                        lastResult_ = x * y;
-                        return lastResult_;
+                        return this->handle_multiply(yield, x, y);
                     });
 
-                i.register_method("Divide", 
-                    [this](boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
-                        if (y == 0) {
-                            throw sdbusplus::exception::SdBusError(EDOM, "xyz.openbmc_project.Calculator.DivisionByZero");
-                        }
-                        lastResult_ = x / y;
-                        return lastResult_;
+                i.register_method("Divide",
+                    [this](boost::asio::yield_context yield, int64_t x, int64_t y) {
+                        return this->handle_divide(yield, x, y);
                     });
 
-                i.register_method("Clear", 
-                    [this, &i](boost::asio::yield_context /*yield*/) {
-                        // Note: In a real system, you'd map 'caller' to a UID.
-                        // For this example, if owner_ is set and doesn't match, we deny.
-                        if (!owner_.empty() && owner_ != "root") { 
-                            throw sdbusplus::exception::SdBusError(EACCES, "xyz.openbmc_project.Calculator.PermissionDenied");
-                        }
+                i.register_method("Express",
+                    [this, &i](boost::asio::yield_context yield) {
+                        return this->handle_express(yield);
+                    });
 
+                i.register_method("Clear",
+                    [this, &i](boost::asio::yield_context yield) {
                         // Clear
-                        int64_t oldVal = lastResult_;
-                        lastResult_ = 0;
-                        
+                        int64_t oldValue = this->lastResult_;
+                        this->handle_clear(yield);
+
                         // Signal
                         auto s = i.new_signal("Cleared");
-                        s.append(oldVal);
+                        s.append(oldValue);
                         s.signal_send();
                     });
             });
     }
+
+    // --- Logic Functions ---
+
+    template <auto PtrToMember>
+    bool set_property(const auto& newVal, auto& /*currVal*/) {
+        this->*PtrToMember = newVal;
+        return true;
+    }
+
+    template <auto PtrToMember>
+    const auto& get_property(const auto& /*currVal*/) {
+        return this->*PtrToMember;
+    }
+
+    int64_t handle_multiply(boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+        lastResult_ = x * y;
+        return lastResult_;
+    }
+
+    int64_t handle_divide(boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+        if (y == 0) {
+            throw sdbusplus::exception::SdBusError(EDOM, "xyz.openbmc_project.Calculator.DivisionByZero");
+        }
+        lastResult_ = x / y;
+        return lastResult_;
+    }
+
+    std::string handle_express(boost::asio::yield_context /*yield*/) {
+        return std::to_string(lastResult_);
+    }
+
+    void handle_clear(boost::asio::yield_context /*yield*/) {
+        // Note: In a real system, you'd map 'caller' to a UID.
+        // For this example, if owner_ is set and doesn't match, we deny.
+        if (!owner_.empty() && owner_ != "root") { 
+            throw sdbusplus::exception::SdBusError(EACCES, "xyz.openbmc_project.Calculator.PermissionDenied");
+        }
+
+        // Clear
+        lastResult_ = 0;
+    }
+
+    // --- Variables ---
 
     std::shared_ptr<sdbusplus::asio::connection> conn_;
     sdbusplus::asio::object_server objServer_;
@@ -105,6 +153,7 @@ class BoostAsioCalculatorService {
 
     int64_t lastResult_ = 0;
     std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
+    std::string base_ = "xyz.openbmc_project.Calculator.State.Decimal";
     std::string owner_ = "root";
 };
 

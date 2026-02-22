@@ -26,7 +26,10 @@ class SdbusplusAsyncCalculatorService {
                                         sdbusplus::vtable::property_::emits_change),
             sdbusplus::vtable::property("Status", "s", 
                                         get_property<&SdbusplusAsyncCalculatorService::status_>,
-                                        sdbusplus::vtable::property_::emits_change),
+                                        sdbusplus::vtable::property_::const_),
+            sdbusplus::vtable::property("Base", "s", 
+                                        get_property<&SdbusplusAsyncCalculatorService::base_>,
+                                        sdbusplus::vtable::property_::const_),
             sdbusplus::vtable::property("Owner", "s", 
                                         get_property<&SdbusplusAsyncCalculatorService::owner_>,
                                         set_property<&SdbusplusAsyncCalculatorService::owner_>,
@@ -36,6 +39,8 @@ class SdbusplusAsyncCalculatorService {
                 handle_method<multiply_t, &SdbusplusAsyncCalculatorService::multiply>),
             sdbusplus::vtable::method("Divide", "xx", "x",
                 handle_method<divide_t, &SdbusplusAsyncCalculatorService::divide>),
+            sdbusplus::vtable::method("Express", "", "s",
+                handle_method<express_t, &SdbusplusAsyncCalculatorService::express>),
             sdbusplus::vtable::method("Clear", "", "",
                 handle_method<clear_t, &SdbusplusAsyncCalculatorService::clear>),
 
@@ -58,6 +63,11 @@ class SdbusplusAsyncCalculatorService {
     struct divide_t {
         using value_types = std::tuple<int64_t, int64_t>;
         using return_type = int64_t;
+    };
+
+    struct express_t {
+        using value_types = std::tuple<>;
+        using return_type = std::string;
     };
 
     struct clear_t {
@@ -164,6 +174,10 @@ class SdbusplusAsyncCalculatorService {
         co_return lastResult_;
     }
 
+    sdbusplus::async::task<std::string> express() {
+        co_return std::to_string(lastResult_);
+    }
+
     sdbusplus::async::task<void> clear() {
         // ermission Check
         if (!owner_.empty() && owner_ != "root") { 
@@ -193,6 +207,7 @@ class SdbusplusAsyncCalculatorService {
 
     int64_t lastResult_ = 0;
     std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
+    std::string base_ = "xyz.openbmc_project.Calculator.State.Decimal";
     std::string owner_ = "root";
 };
 
