@@ -16,7 +16,5 @@ option('get-all-properties', type: 'feature', description: 'Build get-all-proper
 
 option('calculator', type: 'feature', description: 'Build calculator', value : 'enabled')
 
-option('my-calculator', type: 'feature', description: 'Build my-calculator', value : 'enabled')
-
 # sample command with options:
 #rm -rf build && meson setup build --reconfigure -Dcalculator=disabled -Dasio-example=disabled

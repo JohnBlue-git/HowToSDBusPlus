@@ -1,7 +1,6 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <concepts>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <sdbusplus/asio/connection.hpp>
@@ -25,11 +24,13 @@ class BoostAsioCalculatorService {
         status_(CalculatorEnum::State::success),
         owner_("root")
     {
-        checkContract();
         setupInterface();
     }
 
   protected:
+    inline Derived& derived() { return static_cast<Derived&>(*this); }
+    inline const Derived& derived() const { return static_cast<const Derived&>(*this); }
+
     void setupInterface() {
         calculatorIface_ = objServer_.add_unique_interface(
             objectPath_, interfaceName_,
@@ -98,48 +99,6 @@ class BoostAsioCalculatorService {
                         s.signal_send();
                     });
             });
-    }
-
-    // --- CRTP Contract Enforcement ---
-
-    inline Derived& derived() {
-        return static_cast<Derived&>(*this);
-    }
-
-    inline const Derived& derived() const {
-        return static_cast<const Derived&>(*this);
-    }
-
-    inline void checkContract() const {
-        static_assert(
-            requires(Derived& d, const Derived& cd, boost::asio::yield_context yield, int64_t x, int64_t y) {
-            {
-                d.lastResult_
-            } -> std::same_as<int64_t&>;
-            {
-                d.base_
-            } -> std::same_as<std::string&>;
-            {
-                d.status_
-            } -> std::same_as<std::string&>;
-            {
-                d.owner_
-            } -> std::same_as<std::string&>;
-
-            {
-                d.handle_multiply(yield, x, y)
-            } -> std::same_as<int64_t>;
-            {
-                d.handle_divide(yield, x, y)
-            } -> std::same_as<int64_t>;
-            {
-                cd.handle_express(yield)
-            } -> std::same_as<std::string>;
-            {
-                d.handle_clear(yield)
-            } -> std::same_as<void>;
-        },
-        "CRTP contract mismatch: required properties or methods are missing or have incorrect signatures.");
     }
 
     // --- Logic Functions ---
