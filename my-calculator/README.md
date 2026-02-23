@@ -1,161 +1,325 @@
+# my-calculator
 
-## The C++ Service Implementation
+This example uses one D-Bus contract and demonstrates four implementation styles:
 
-This code uses the `sdbusplus::asio` or standard `sdbusplus` object server patterns to register the interface described in your YAML.
-
-```cpp
-#include <iostream>
-#include <sdbusplus/bus.hpp>
-#include <sdbusplus/server.hpp>
-#include <sdbusplus/asio/object_server.hpp>
-
-// Constants based on YAML
-const char* SERVICE_NAME = "xyz.openbmc_project.Calculator";
-const char* OBJECT_PATH = "/xyz/openbmc_project/calculator";
-const char* INTERFACE_NAME = "xyz.openbmc_project.Calculator";
-
-int main() {
-    // 1. Setup Connection
-    boost::asio::io_context io;
-    auto conn = std::make_shared<sdbusplus::asio::connection>(io, sdbusplus::bus::new_system());
-    conn->request_name(SERVICE_NAME);
-
-    // 2. Create the Object Server
-    auto server = sdbusplus::asio::object_server(conn);
-    
-    // 3. Register the Interface
-    std::shared_ptr<sdbusplus::asio::dbus_interface> iface = 
-        server.add_unique_interface(OBJECT_PATH, INTERFACE_NAME);
-
-    // --- Properties ---
-
-    // Property: LastResult (Read/Write)
-    static int64_t lastResult = 0;
-    iface->register_property_rw<int64_t>(
-        "LastResult", 
-        sdbusplus::vtable::property_::emits_change,
-        [](const int64_t& newVal, int64_t& currVal) {
-            currVal = newVal;
-            return 1; // Success
-        },
-        [](const int64_t& currVal) {
-            return lastResult;
-        }
-    );
-
-    // Property: Status (Constant Enum)
-    // In sdbusplus, enums are often passed as strings over the wire
-    iface->register_property_r<std::string>(
-        "Status",
-        sdbusplus::vtable::property_::const_,
-        [](const std::string& currVal) {
-            return "xyz.openbmc_project.Calculator.State.Success";
-        }
-    );
-
-    // Property: Owner (Read/Write with logic)
-    static std::string owner = "None";
-    iface->register_property_rw<std::string>(
-        "Owner",
-        sdbusplus::vtable::property_::emits_change,
-        [](const std::string& newVal, std::string& currVal) {
-            if (newVal == "root") { // Example logic for PermissionDenied
-                currVal = newVal;
-                return 1;
-            }
-            // In a real scenario, you'd throw the error defined in your events.yaml
-            return 0; 
-        },
-        [](const std::string& currVal) {
-            return owner;
-        }
-    );
-
-    // --- Methods ---
-
-    // Method: Multiply(x, y) -> z
-    iface->register_method("Multiply", [](const int64_t x, const int64_t y) {
-        lastResult = x * y;
-        return lastResult;
-    });
-
-    // Method: Divide(x, y) -> z
-    iface->register_method("Divide", [](const int64_t x, const int64_t y) {
-        if (y == 0) {
-            throw sdbusplus::xyz::openbmc_project::Calculator::Error::DivisionByZero();
-        }
-        lastResult = x / y;
-        return lastResult;
-    });
-
-    // Method: Clear
-    iface->register_method("Clear", [&iface]() {
-        int64_t oldVal = lastResult;
-        lastResult = 0;
-        
-        // --- Signal Emission ---
-        // Emit the 'Cleared' signal defined in YAML
-        auto s = iface->new_signal("Cleared");
-        s.append(oldVal);
-        s.signal_send();
-    });
-
-    // 4. Finalize and Run
-    iface->initialize();
-    io.run();
-
-    return 0;
-}
-
-```
+- `boost::asio::io_context` + regular class
+- `boost::asio::io_context` + CRTP
+- `sdbusplus::async::context` + regular class
+- `sdbusplus::async::context` + CRTP
 
 ---
 
-## Key Components Explained
+## 1) Usage (including D-Bus service/object/interface layout)
 
-### 1. `add_unique_interface`
+### 1.1 Build & install
 
-This creates the instance of your interface at the specified object path. Unlike static bindings, this doesn't require you to inherit from a generated class; you build the "vtable" (the list of methods/properties) manually.
-
-### 2. `register_property_rw`
-
-This maps your internal C++ variables to DBus properties.
-
-* The **Setter** (first lambda) handles incoming `Set` requests.
-* The **Getter** (second lambda) handles `Get` requests.
-* **Flags:** `sdbusplus::vtable::property_::emits_change` ensures that `PropertiesChanged` signals are sent automatically when the value is updated.
-
-### 3. `register_method`
-
-This connects a DBus method name directly to a C++ lambda or function.
-
-* **Input arguments** are automatically unpacked from the DBus message.
-* **Return values** are automatically packed into the DBus reply.
-
-### 4. Handling Errors (from `events.yaml`)
-
-In `sdbusplus`, if you have generated the error headers from your `events.yaml`, you can throw them as exceptions:
-
-```cpp
-throw sdbusplus::xyz::openbmc_project::Calculator::Error::DivisionByZero();
-
-```
-
-This will result in a formal DBus error being sent back to the caller instead of a standard return.
-
-### stackful VS stackless Coroutine
-
-While sdbusplus supports C++20 coroutines, the current register_method implementation in many versions of sdbusplus expects you to use boost::asio::yield_context (stackful) for automatic async handling, or it requires a specific template helper for stackless (co_return) coroutines that your current environment might not be implicitly mapping.
-
-To fix this and stick to the C++20/C++23 standard while satisfying the template constraints of sdbusplus, we will use the yield_context approach. It is functionally identical for your needs but has built-in traits that sdbusplus understands for mapping types to DBus.
-
----
-
-## How to Compile
-
-You will need to link against `sdbusplus` and `systemd`. If you are using a BitBake recipe or a standard Linux environment:
+Run from repository root:
 
 ```bash
-g++ -std=c++20 main.cpp -lsdbusplus -lsystemd -lboost_system -o calculator_service
-
+meson setup build --wipe
+meson compile -C build
+sudo meson install -C build
 ```
+
+`meson.build` installs:
+
+- Executables:
+	- `boost_asio_caculator`
+	- `boost_asio_crtp_caculator`
+	- `sdbusplus_async_caculator`
+	- `sdbusplus_async_crtp_caculator`
+- D-Bus policy: `my-calculator.conf` to `/etc/dbus-1/system.d`
+
+If you just installed the policy, reload dbus:
+
+```bash
+sudo systemctl reload dbus
+```
+
+### 1.2 Start the service
+
+Run one of the four binaries (all request the same service name):
+
+```bash
+sudo ./build/my-calculator/boost_asio_caculator
+# or
+sudo ./build/my-calculator/boost_asio_crtp_caculator
+# or
+sudo ./build/my-calculator/sdbusplus_async_caculator
+# or
+sudo ./build/my-calculator/sdbusplus_async_crtp_caculator
+```
+
+### 1.3 D-Bus interface model
+
+- Service: `xyz.openbmc_project.Calculator`
+- Interface: `xyz.openbmc_project.Calculator`
+
+Object paths depend on implementation:
+
+- Single-object variants: `/xyz/openbmc_project/calculator`
+	- `boost_asio_caculator`
+	- `sdbusplus_async_caculator`
+- Multi-object (CRTP) variants:
+	- `/xyz/openbmc_project/calculator/decimal`
+	- `/xyz/openbmc_project/calculator/binary`
+	- `/xyz/openbmc_project/calculator/heximal`
+
+Methods (from `Calculator.interface.yaml` + implementation):
+
+- `Multiply(x:int64, y:int64) -> z:int64`
+- `Divide(x:int64, y:int64) -> z:int64` (`y=0` throws an error)
+- `Express() -> z:string`
+- `Clear()` (emits `Cleared` signal)
+
+Properties:
+
+- `LastResult : int64` (rw)
+- `Status : string` (ro)
+- `Base : string` (ro)
+- `Owner : string` (rw)
+
+Signal:
+
+- `Cleared(oldValue:int64)`
+
+### 1.4 busctl quick test commands
+
+Check object tree first:
+
+```bash
+busctl tree xyz.openbmc_project.Calculator
+```
+
+Example using the single-object variant:
+
+```bash
+OBJ=/xyz/openbmc_project/calculator
+SVC=xyz.openbmc_project.Calculator
+IFACE=xyz.openbmc_project.Calculator
+
+busctl introspect "$SVC" "$OBJ"
+busctl call "$SVC" "$OBJ" "$IFACE" Multiply xx 6 7
+busctl call "$SVC" "$OBJ" "$IFACE" Divide xx 20 5
+busctl call "$SVC" "$OBJ" "$IFACE" Express
+busctl get-property "$SVC" "$OBJ" "$IFACE" LastResult
+busctl call "$SVC" "$OBJ" org.freedesktop.DBus.Properties Set ssv \
+	"$IFACE" Owner s root
+busctl call "$SVC" "$OBJ" "$IFACE" Clear
+```
+
+Monitor signal:
+
+```bash
+busctl monitor --match="type='signal',sender='xyz.openbmc_project.Calculator',interface='xyz.openbmc_project.Calculator',member='Cleared'"
+```
+
+For CRTP multi-object variants, switch `OBJ` to one of:
+
+- `/xyz/openbmc_project/calculator/decimal`
+- `/xyz/openbmc_project/calculator/binary`
+- `/xyz/openbmc_project/calculator/heximal`
+
+---
+
+## 2) Structure (purpose of each file)
+
+- `meson.build`
+	- Declares four executables
+	- Installs `my-calculator.conf` into the D-Bus policy directory
+
+- `my-calculator.conf`
+	- Allows owning and sending to `xyz.openbmc_project.Calculator`
+	- On system bus, requests are often denied without this policy
+
+- `Calculator.interface.yaml`
+	- Interface contract (methods / properties / signals / enums)
+	- Used as the main D-Bus contract document in this project
+
+- `Calculator.events.yaml`
+	- Error and event descriptions (`DivisionByZero`, `PermissionDenied`, `Cleared`)
+	- Complements the interface YAML with behavior semantics
+
+- `calculator_enum.hpp`
+	- Central constants for service/interface/object paths/error names
+	- Avoids duplicated hard-coded strings across `.cpp` files
+
+- `boost_asio_caculator.cpp`
+	- `boost::asio::io_context` + `sdbusplus::asio`
+	- Single object path (root)
+
+- `boost_asio_crtp_caculator.cpp`
+	- `boost::asio::io_context` + CRTP
+	- Creates three objects: decimal/binary/heximal
+
+- `sdbusplus_async_caculator.cpp`
+	- `sdbusplus::async::context` + coroutine `task<>`
+	- Single object path (root)
+
+- `sdbusplus_async_crtp_caculator.cpp`
+	- `sdbusplus::async::context` + CRTP + coroutine `task<>`
+	- Three objects: decimal/binary/heximal
+
+---
+
+## 3) `boost::asio::io_context` vs `sdbusplus::async::context`
+
+- `boost::asio::io_context`
+	- General-purpose event loop (network/timer/signal integration)
+	- Connected to D-Bus in this project via `sdbusplus::asio::connection`
+	- Async style is callback / `yield_context` oriented
+
+- `sdbusplus::async::context`
+	- Async runtime tailored for sdbusplus
+	- Method handlers can return `sdbusplus::async::task<T>` directly
+	- More coroutine / `co_await` native style for D-Bus handlers
+
+Practical rule of thumb:
+
+- If your system already uses many Asio components, `io_context` is easier to integrate
+- If your focus is coroutine-first D-Bus service code, `sdbusplus::async::context` is usually cleaner
+
+---
+
+## 4) `virtual override` vs CRTP
+
+Both are polymorphism techniques, but they resolve function calls at different times.
+
+- `virtual override`: runtime polymorphism (vtable dispatch)
+- CRTP: compile-time polymorphism (template instantiation + static dispatch)
+
+### 4.1 `virtual override` (runtime dispatch)
+
+Typical shape:
+
+```cpp
+struct CalculatorApi {
+		virtual ~CalculatorApi() = default;
+		virtual int64_t multiply(int64_t x, int64_t y) = 0;
+		virtual std::string express() const = 0;
+};
+
+class DecimalCalculator : public CalculatorApi {
+	public:
+		int64_t multiply(int64_t x, int64_t y) override {
+				lastResult_ = x * y;
+				return lastResult_;
+		}
+
+		std::string express() const override {
+				return std::to_string(lastResult_);
+		}
+
+	private:
+		int64_t lastResult_ = 0;
+};
+```
+
+Call site behavior:
+
+```cpp
+void serve(CalculatorApi& calc) {
+		auto z = calc.multiply(6, 7); // resolved at runtime via vtable
+		(void)z;
+}
+```
+
+Pros:
+
+- Very intuitive OOP model
+- Swappable implementations behind a base reference/pointer
+
+Trade-off:
+
+- Runtime indirection (vtable)
+- Interface mismatch is found when implementing/compiling derived classes, but not as rich as contract-style template constraints
+
+### 4.2 CRTP (compile-time dispatch)
+
+Typical shape:
+
+```cpp
+template <typename Derived>
+class CalculatorBase {
+	public:
+		int64_t multiply(int64_t x, int64_t y) {
+				return derived().multiplyImpl(x, y); // resolved at compile time
+		}
+
+		std::string express() const {
+				return derived().expressImpl();
+		}
+
+	private:
+		Derived& derived() { return static_cast<Derived&>(*this); }
+		const Derived& derived() const { return static_cast<const Derived&>(*this); }
+};
+
+class BinaryCalculator : public CalculatorBase<BinaryCalculator> {
+	public:
+		int64_t multiplyImpl(int64_t x, int64_t y) {
+				lastResult_ = x * y;
+				return lastResult_;
+		}
+
+		std::string expressImpl() const {
+				return "0b" + toBinary(lastResult_);
+		}
+
+	private:
+		int64_t lastResult_ = 0;
+		static std::string toBinary(int64_t v);
+};
+```
+
+Contract checking (same idea used in this repo):
+
+```cpp
+template <typename D>
+concept CalculatorContract = requires(D d, const D cd, int64_t x, int64_t y) {
+		{ d.multiplyImpl(x, y) } -> std::same_as<int64_t>;
+		{ cd.expressImpl() } -> std::same_as<std::string>;
+};
+
+static_assert(CalculatorContract<BinaryCalculator>);
+```
+
+Pros:
+
+- No virtual dispatch cost
+- Strong compile-time contract checking (`requires` / `static_assert`)
+- Great for sharing infrastructure while specializing behavior
+
+Trade-off:
+
+- More template complexity
+- Can increase compile time and error-message complexity
+
+### 4.3 How this repo applies them
+
+- Non-CRTP files (`boost_asio_caculator.cpp`, `sdbusplus_async_caculator.cpp`)
+	- One service class with all logic in one place
+	- Easier to read when behavior variants are not required
+
+- CRTP files (`boost_asio_crtp_caculator.cpp`, `sdbusplus_async_crtp_caculator.cpp`)
+	- One reusable base for D-Bus glue
+	- Derived classes only customize behavior (especially `Express()` for decimal/binary/heximal)
+	- Better fit for "same interface, multiple formatting strategies"
+
+### 4.4 Dispatch difference at a glance
+
+```cpp
+// Virtual: runtime dispatch
+CalculatorApi* p = new DecimalCalculator();
+auto a = p->express();
+
+// CRTP: compile-time dispatch
+BinaryCalculator b;
+auto c = b.express();
+```
+
+In short:
+
+- Prefer `virtual override` when runtime substitution is the primary goal
+- Prefer CRTP when you want zero-overhead static polymorphism and strong compile-time contracts
+

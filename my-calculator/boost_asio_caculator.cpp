@@ -5,6 +5,7 @@
 #include <sdbusplus/asio/object_server.hpp>
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/exception.hpp>
+#include "calculator_enum.hpp"
 
 class BoostAsioCalculatorService {
   public:
@@ -57,7 +58,6 @@ class BoostAsioCalculatorService {
                     });
 
                 // Methods using yield_context (The sdbusplus-native async way)
-                // This satisfies the "No dbus type conversion" error.
                 
                 i.register_method("Multiply",
                     [this](boost::asio::yield_context yield, int64_t x, int64_t y) {
@@ -109,7 +109,7 @@ class BoostAsioCalculatorService {
     }
 
     template <auto PtrToMember>
-    const auto& get_property(const auto& /*currVal*/) {
+    const auto& get_property(const auto& /*currVal*/) const {
         return this->*PtrToMember;
     }
 
@@ -120,13 +120,13 @@ class BoostAsioCalculatorService {
 
     int64_t handle_divide(boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
         if (y == 0) {
-            throw sdbusplus::exception::SdBusError(EDOM, "xyz.openbmc_project.Calculator.DivisionByZero");
+            throw sdbusplus::exception::SdBusError(EDOM, CalculatorEnum::Error::divisionByZero);
         }
         lastResult_ = x / y;
         return lastResult_;
     }
 
-    std::string handle_express(boost::asio::yield_context /*yield*/) {
+    std::string handle_express(boost::asio::yield_context /*yield*/) const {
         return std::to_string(lastResult_);
     }
 
@@ -134,7 +134,7 @@ class BoostAsioCalculatorService {
         // Note: In a real system, you'd map 'caller' to a UID.
         // For this example, if owner_ is set and doesn't match, we deny.
         if (!owner_.empty() && owner_ != "root") { 
-            throw sdbusplus::exception::SdBusError(EACCES, "xyz.openbmc_project.Calculator.PermissionDenied");
+            throw sdbusplus::exception::SdBusError(EACCES, CalculatorEnum::Error::permissionDenied);
         }
 
         // Clear
@@ -147,13 +147,13 @@ class BoostAsioCalculatorService {
     sdbusplus::asio::object_server objServer_;
     std::unique_ptr<sdbusplus::asio::dbus_interface> calculatorIface_;
 
-    const char* serviceName_ = "xyz.openbmc_project.Calculator";
-    const char* objectPath_ = "/xyz/openbmc_project/calculator";
-    const char* interfaceName_ = "xyz.openbmc_project.Calculator";
+    const char* serviceName_ = CalculatorEnum::service;
+    const char* objectPath_ = CalculatorEnum::ObjectPath::root;
+    const char* interfaceName_ = CalculatorEnum::interface;
 
     int64_t lastResult_ = 0;
-    std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
-    std::string base_ = "xyz.openbmc_project.Calculator.State.Decimal";
+    std::string status_ = CalculatorEnum::State::success;
+    std::string base_ = CalculatorEnum::NumberBase::decimal;
     std::string owner_ = "root";
 };
 

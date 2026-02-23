@@ -30,7 +30,7 @@ boost_compile_args = [
 ]
 
 boost_dep = declare_dependency(
-    dependencies: dependency('boost', required: false),
+    dependencies: dependency('boost', modules: ['coroutine', 'context']),
     compile_args: boost_compile_args)
 
 root_inc = include_directories('/usr/include', '/usr/local/include')
@@ -110,4 +110,10 @@ endif
 
 if not get_option('calculator').disabled()
   subdir('calculator')
+endif
+
+# build my-calculator example
+
+if not get_option('my-calculator').disabled()
+  subdir('my-calculator')
 endif

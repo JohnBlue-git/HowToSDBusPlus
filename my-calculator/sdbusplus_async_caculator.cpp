@@ -5,6 +5,7 @@
 #include <sdbusplus/vtable.hpp>
 #include <sdbusplus/server/interface.hpp>
 #include <sdbusplus/exception.hpp>
+#include "calculator_enum.hpp"
 
 class SdbusplusAsyncCalculatorService {
   public:
@@ -104,7 +105,7 @@ class SdbusplusAsyncCalculatorService {
             self->*PtrToMember = std::get<PropertyType>(val);
         }
         catch (const std::exception& e) {
-            return sd_bus_error_set(ret_error, "xyz.openbmc_project.Calculator.Error", e.what());
+            return sd_bus_error_set(ret_error, CalculatorEnum::Error::generic, e.what());
         }
         return 1;
     }
@@ -156,7 +157,7 @@ class SdbusplusAsyncCalculatorService {
             );
         }
         catch (const std::exception& e) {
-            return sd_bus_error_set(ret_error, "xyz.openbmc_project.Calculator.Error", e.what());
+            return sd_bus_error_set(ret_error, CalculatorEnum::Error::generic, e.what());
         }
         return 1;
     }
@@ -201,13 +202,13 @@ class SdbusplusAsyncCalculatorService {
     sdbusplus::async::context& ctx_;
     std::unique_ptr<sdbusplus::server::interface::interface> interface_;
 
-    const char* serviceName_ = "xyz.openbmc_project.Calculator";
-    const char* objectPath_ = "/xyz/openbmc_project/calculator";
-    const char* interfaceName_ = "xyz.openbmc_project.Calculator";
+    const char* serviceName_ = CalculatorEnum::service;
+    const char* objectPath_ = CalculatorEnum::ObjectPath::root;
+    const char* interfaceName_ = CalculatorEnum::interface;
 
     int64_t lastResult_ = 0;
-    std::string status_ = "xyz.openbmc_project.Calculator.State.Success";
-    std::string base_ = "xyz.openbmc_project.Calculator.State.Decimal";
+    std::string status_ = CalculatorEnum::State::success;
+    std::string base_ = CalculatorEnum::NumberBase::decimal;
     std::string owner_ = "root";
 };
 

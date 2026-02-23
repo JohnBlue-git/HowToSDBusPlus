@@ -21,6 +21,12 @@ Pe-install
 
 Another quick choice is to use docker image created via [Dockerfile](Dockerfile)
 ```console
+# add your user to the docker group (recommended)
+sudo usermod -aG docker $USER
+
+# continue with activating the group:
+newgrp docker
+
 # run
 docker run -it johnbluedocker/sdbusplus-dev
 
