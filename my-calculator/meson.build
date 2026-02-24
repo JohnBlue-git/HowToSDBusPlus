@@ -25,6 +25,20 @@ executable(
     install: true
 )
 
+# --- Build Yaml Generated Executable ---
+sdbusplusplus_prog = find_program('sdbus++', native: true)
+sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson', native: true)
+yaml_generated_sources = []
+subdir('xyz')
+executable(
+    'yaml_generated_caculator',
+    'yaml_generated_caculator.cpp',
+    yaml_generated_sources,
+    include_directories: include_directories('.'),
+    dependencies: sdbusplus_dep,
+    install: true
+)
+
 # --- Install Configuration ---
 # Define the installation directory for D-Bus system policies
 #dbus_dep = dependency('dbus-1')

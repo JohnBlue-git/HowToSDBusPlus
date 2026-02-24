@@ -55,11 +55,15 @@ The [sdbusplus] library builds on top of the [sd-bus] library to create a modern
 To build examples
 ```console
 meson setup build --wipe
+meson setup build --reconfigure
 cd build
 ninja -j2
 sudo ninja install
 ```
-
+To build individual
+```console
+meson setup build --reconfigure && meson compile -C build yaml_generated_caculator
+```
 
 ## Here are common dbus commands to check whether the proprams work as expected
 

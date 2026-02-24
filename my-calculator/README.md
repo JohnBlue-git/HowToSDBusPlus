@@ -1,11 +1,12 @@
 # my-calculator
 
-This example uses one D-Bus contract and demonstrates four implementation styles:
+This example uses one D-Bus contract and demonstrates five implementation styles:
 
 - `boost::asio::io_context` + regular class
 - `boost::asio::io_context` + CRTP
 - `sdbusplus::async::context` + regular class
 - `sdbusplus::async::context` + CRTP
+- `sdbusplus::async::context` + CRTP (generated from YAML by `sdbus++`)
 
 ---
 
@@ -28,6 +29,7 @@ sudo meson install -C build
 	- `boost_asio_crtp_caculator`
 	- `sdbusplus_async_caculator`
 	- `sdbusplus_async_crtp_caculator`
+	- `yaml_generated_caculator`
 - D-Bus policy: `my-calculator.conf` to `/etc/dbus-1/system.d`
 
 If you just installed the policy, reload dbus:
@@ -38,7 +40,7 @@ sudo systemctl reload dbus
 
 ### 1.2 Start the service
 
-Run one of the four binaries (all request the same service name):
+Run one of the five binaries (all request the same service name):
 
 ```bash
 sudo ./build/my-calculator/boost_asio_caculator
@@ -48,7 +50,20 @@ sudo ./build/my-calculator/boost_asio_crtp_caculator
 sudo ./build/my-calculator/sdbusplus_async_caculator
 # or
 sudo ./build/my-calculator/sdbusplus_async_crtp_caculator
+# or
+sudo ./build/my-calculator/yaml_generated_caculator
 ```
+
+### 1.2.1 YAML-generated CRTP target
+
+`yaml_generated_caculator` is generated and built from:
+
+- `xyz/openbmc_project/Calculator.interface.yaml`
+- `xyz/openbmc_project/Calculator.events.yaml`
+
+Meson runs `sdbus++-gen-meson` to produce generated headers/sources (`common.hpp`,
+`event.hpp`, `aserver.hpp`, ...), then compiles `yaml_generated_caculator.cpp`
+against them.
 
 ### 1.3 D-Bus interface model
 
@@ -159,6 +174,17 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 - `sdbusplus_async_crtp_caculator.cpp`
 	- `sdbusplus::async::context` + CRTP + coroutine `task<>`
 	- Three objects: decimal/binary/heximal
+
+- `yaml_generated_caculator.cpp`
+	- `sdbusplus::async::context` + CRTP based on generated `aserver.hpp`
+	- Uses generated `common.hpp` / `event.hpp` / `aserver.hpp`
+	- Three objects: decimal/binary/heximal
+
+- `xyz/openbmc_project/Calculator.interface.yaml`
+	- YAML contract used by `sdbus++` code generation for this target
+
+- `xyz/openbmc_project/Calculator.events.yaml`
+	- YAML error/event definitions used by `sdbus++` code generation
 
 ---
 

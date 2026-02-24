@@ -68,8 +68,8 @@ properties:
           - const
       description: >
           The current state of the Calculator.
-    - name: enum[self.Base]
-      type: string
+    - name: Base
+      type: enum[self.Base]
       default: Decimal
       flags:
           - const
