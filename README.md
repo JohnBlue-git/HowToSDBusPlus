@@ -183,6 +183,8 @@ sudo service dbus start
 
 ### Example: [caculator](caculator/README.md)
 
+### Example: [my-caculator](my-caculator/README.md)
+
 ### Still organizing ...
 - asio-example
 - calculator
