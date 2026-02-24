@@ -12,8 +12,7 @@ class YamlGeneratedCalculatorService :
     public sdbusplus::aserver::xyz::openbmc_project::Calculator<Derived>
 {
   public:
-    using GeneratedBase =
-    sdbusplus::aserver::xyz::openbmc_project::Calculator<Derived>;
+    using GeneratedBase = sdbusplus::aserver::xyz::openbmc_project::Calculator<Derived>;
     using State = typename GeneratedBase::State;
 
     YamlGeneratedCalculatorService(sdbusplus::async::context& ctx,
@@ -24,11 +23,6 @@ class YamlGeneratedCalculatorService :
         this->owner("root");
     }
 
-    // auto get_property(typename GeneratedBase::owner_t) const
-    // {
-    //     return owner_;
-    // }
-
     bool set_property(typename GeneratedBase::owner_t, std::string owner)
     {
         // Logic: Only root or the current owner can change ownership
@@ -37,6 +31,8 @@ class YamlGeneratedCalculatorService :
         owner_ = std::move(owner);
         return changed;
     }
+
+  public:
 
     auto method_call(typename GeneratedBase::multiply_t, auto x, auto y)
     {
@@ -94,11 +90,13 @@ class SdbusplusAsyncCalculatorServiceDecimal :
 {
   public:
     using Base = YamlGeneratedCalculatorService<SdbusplusAsyncCalculatorServiceDecimal>;
+    friend Base;
 
     explicit SdbusplusAsyncCalculatorServiceDecimal(sdbusplus::async::context& ctx) :
-        Base(ctx, "/xyz/openbmc_project/calculator/decimal")
-    {}
+        Base(ctx, "/xyz/openbmc_project/calculator/decimal") {        
+    }
 
+  private:
     std::string format(int64_t value) const
     {
         return std::to_string(value);
@@ -110,11 +108,13 @@ class SdbusplusAsyncCalculatorServiceBinary :
 {
   public:
     using Base = YamlGeneratedCalculatorService<SdbusplusAsyncCalculatorServiceBinary>;
+    friend Base;
 
     explicit SdbusplusAsyncCalculatorServiceBinary(sdbusplus::async::context& ctx) :
-        Base(ctx, "/xyz/openbmc_project/calculator/binary")
-    {}
+        Base(ctx, "/xyz/openbmc_project/calculator/binary") {
+    }
 
+  private:
     std::string format(int64_t value) const
     {
         if (value == 0)
@@ -141,11 +141,13 @@ class SdbusplusAsyncCalculatorServiceHeximal :
 {
   public:
     using Base = YamlGeneratedCalculatorService<SdbusplusAsyncCalculatorServiceHeximal>;
+    friend Base;
 
     explicit SdbusplusAsyncCalculatorServiceHeximal(sdbusplus::async::context& ctx) :
-        Base(ctx, "/xyz/openbmc_project/calculator/heximal")
-    {}
+        Base(ctx, "/xyz/openbmc_project/calculator/heximal") {
+    }
 
+  private:
     std::string format(int64_t value) const
     {
         std::ostringstream oss;
