@@ -2,6 +2,7 @@
 #include <sstream>
 #include <tuple>
 #include <concepts>
+#include <type_traits>
 #include <variant>
 #include <sdbusplus/async.hpp>
 #include <sdbusplus/vtable.hpp>
@@ -199,7 +200,9 @@ class SdbusplusAsyncCalculatorService {
             typename T::value_types args;
             if constexpr (std::tuple_size_v<typename T::value_types> > 0)
             {
-                msg.read(args);
+                args = unpack_args<typename T::value_types>(
+                    msg,
+                    std::make_index_sequence<std::tuple_size_v<typename T::value_types>>{});
             }
 
             self->ctx_.spawn(
@@ -240,6 +243,12 @@ class SdbusplusAsyncCalculatorService {
                                     e.what());
         }
         return 1;
+    }
+
+    template <typename Tuple, std::size_t... I>
+    static Tuple unpack_args(sdbusplus::message_t& msg, std::index_sequence<I...>)
+    {
+        return msg.unpack<std::tuple_element_t<I, Tuple>...>();
     }
 
     // --- Logic Functions ---
