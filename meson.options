@@ -18,5 +18,13 @@ option('calculator', type: 'feature', description: 'Build calculator', value : '
 
 option('my-calculator', type: 'feature', description: 'Build my-calculator', value : 'enabled')
 
+option(
+	'my-calculator-opt-mode',
+	type: 'combo',
+	choices: ['default', 'O2', 'O3'],
+	value: 'O3',
+	description: 'Optimization mode for my-calculator targets'
+)
+
 # sample command with options:
 #rm -rf build && meson setup build --reconfigure -Dcalculator=disabled -Dasio-example=disabled

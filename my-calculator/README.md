@@ -349,3 +349,119 @@ In short:
 - Prefer `virtual override` when runtime substitution is the primary goal
 - Prefer CRTP when you want zero-overhead static polymorphism and strong compile-time contracts
 
+---
+
+## 5) Comprehensive comparision between all executable
+
+This section benchmarks all `my-calculator` executables with the same D-Bus
+contract and compares:
+
+- Handling speed (`Ops/s`, `Avg ms/op`)
+- Memory usage (`Peak RSS`, `Peak HWM`)
+
+### 5.1 Build in optimized mode (`O2` / `O3`)
+
+From repository root, choose optimization mode via Meson option
+`my-calculator-opt-mode`:
+
+```bash
+meson setup build --wipe -Dmy-calculator-opt-mode=O2
+meson compile -C build
+```
+
+or:
+
+```bash
+meson setup build --wipe -Dmy-calculator-opt-mode=O3
+meson compile -C build
+```
+
+> Current choices: `default`, `O2`, `O3`.
+
+### 5.2 Pytest benchmark workflow (fixture style)
+
+Benchmark file: `benchmark_compare.py`
+
+- Uses `pytest` parameterization to iterate all executables
+- Uses fixture to start one service process per test case and stop it in teardown
+- Runs sequentially (do **not** use `pytest-xdist` parallel mode)
+- Because all binaries share the same service/interface name,
+  fixture lifecycle avoids cross-case interference
+
+### 5.3 Run benchmark
+
+Install pytest if needed:
+
+```bash
+apt update
+apt install -y python3-pip
+python3 -m pip install -U pytest
+```
+
+Run from repository root:
+
+```bash
+pytest -s my-calculator/benchmark_compare.py
+
+python3 -m pytest -s my-calculator/benchmark_compare.py
+```
+
+### 5.4 Optional runtime controls (environment variables)
+
+You can tune benchmark behavior without editing code:
+
+- `MYCALC_BUILD_DIR` (default: `build/my-calculator`)
+- `MYCALC_ITERATIONS` (default: `300`)
+- `MYCALC_WARMUP` (default: `40`)
+- `MYCALC_STARTUP_TIMEOUT` (default: `8.0`)
+- `MYCALC_BUS` (`system` or `user`, default: `system`)
+- `MYCALC_USE_SUDO` (`1/true/yes` to enable `sudo -n` startup)
+- `MYCALC_ONLY` (comma-separated executable names)
+
+Example (only run two executables with custom loop count):
+
+```bash
+MYCALC_ITERATIONS=1000 \
+MYCALC_ONLY=boost_asio_caculator,sdbusplus_async_caculator \
+pytest -s my-calculator/benchmark_compare.py
+```
+
+### 5.5 Output interpretation
+
+At session end, pytest prints a summary table and rankings:
+
+- Speed ranking: high `Ops/s` is better
+- Memory ranking: low `Peak HWM` is better
+
+For fair comparison:
+
+- Keep CPU governor/system load stable
+- Run each mode (`O2` / `O3`) multiple times
+- Compare trends, not just a single run
+
+### 5.5 Output Results:
+
+Terms:
+- **Ops/s**  
+  Operations per second (throughput). **Higher is better**.
+- **Avg ms/op**  
+  Average milliseconds per operation (latency). **Lower is better**.  
+  Roughly inverse to Ops/s:  
+  $$\text{Avg ms/op} \approx \frac{1000}{\text{Ops/s}}$$
+- **Peak RSS (KiB)**  
+  Peak resident memory usage (physical RAM used), in KiB.  
+  **Lower is generally better**.
+- **Peak HWM (KiB)**  
+  High-water mark of resident memory during process lifetime (highest RSS ever reached), in KiB.
+```bash
+============================================================================
+Executable                                Ops/s    Avg ms/op  Peak RSS(KiB)  Peak HWM(KiB)
+----------------------------------------------------------------------------
+non_async_caculator                      195.56       5.1135           4992           4992
+boost_asio_caculator                     212.97       4.6954           5248           5248
+boost_asio_crtp_caculator                210.45       4.7516           5120           5120
+sdbusplus_async_caculator                213.35       4.6872           4992           4992
+sdbusplus_async_crtp_caculator           200.94       4.9765           5248           5248
+yaml_generated_caculator                 211.37       4.7311           5376           5376
+```
+

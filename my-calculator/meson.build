@@ -1,27 +1,47 @@
 
+my_calculator_opt_mode = get_option('my-calculator-opt-mode')
+my_calculator_override_options = []
+
+if my_calculator_opt_mode == 'O2'
+    my_calculator_override_options += ['optimization=2']
+elif my_calculator_opt_mode == 'O3'
+    my_calculator_override_options += ['optimization=3']
+endif
+
 # --- Build Executable ---
+executable(
+    'non_async_caculator',
+    'non_async_caculator.cpp',
+    dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
+    install: true
+)
 executable(
     'boost_asio_caculator',
     'boost_asio_caculator.cpp',
     dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
     install: true
 )
 executable(
     'boost_asio_crtp_caculator',
     'boost_asio_crtp_caculator.cpp',
     dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
     install: true
 )
 executable(
     'sdbusplus_async_caculator',
     'sdbusplus_async_caculator.cpp',
     dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
     install: true
 )
 executable(
     'sdbusplus_async_crtp_caculator',
     'sdbusplus_async_crtp_caculator.cpp',
     dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
     install: true
 )
 
@@ -36,6 +56,7 @@ executable(
     yaml_generated_sources,
     include_directories: include_directories('.'),
     dependencies: sdbusplus_dep,
+    override_options: my_calculator_override_options,
     install: true
 )
 
