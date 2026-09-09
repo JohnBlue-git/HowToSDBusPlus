@@ -1,4 +1,6 @@
 # Ignore the entire folder
 build/
+build*/
 subprojects/
 tools/sdbusplus/__pycache__/
+**/__pycache__/

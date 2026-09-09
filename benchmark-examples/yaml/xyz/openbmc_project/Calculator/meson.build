@@ -4,7 +4,7 @@ sdbusplusplus_depfiles = files(
 )
 
 yaml_generated_sources += custom_target(
-    'my_calculator_yaml_generated_cpp',
+    'benchmark_examples_yaml_generated_cpp',
     input: sdbusplusplus_depfiles,
     output: [
         'event.cpp',

@@ -52,27 +52,6 @@ subdir('tools')
 
 # build example ...
 
-if not get_option('simple-dbuscall').disabled()
-  subdir('simple-dbuscall')
-endif
-
-if not get_option('use-systemd1').disabled()
-  subdir('use-systemd1')
-endif
-
-if not get_option('emit-signal').disabled()
-  subdir('emit-signal')
-endif
-
-if not get_option('list-users').disabled()
-  subdir('list-users')
-endif
-
-if not get_option('coroutine-example').disabled()
-  subdir('coroutine-example')
-endif
-
-
 
 # check async ...
 
@@ -93,27 +72,27 @@ assert(
 
 # build async example ...
 
-if not get_option('asio-example').disabled()
-  subdir('asio-example')
+# build YAML-generated examples
+
+if not get_option('generated-via-yaml-examples').disabled()
+  subdir('generated-via-yaml-examples')
 endif
 
-if not get_option('register-property').disabled()
-  subdir('register-property')
+# build basic examples
+
+if not get_option('simple-dbuscall').disabled() or \
+   not get_option('use-systemd1').disabled() or \
+   not get_option('emit-signal').disabled() or \
+   not get_option('list-users').disabled() or \
+  not get_option('coroutine-example').disabled() or \
+   not get_option('asio-example').disabled() or \
+   not get_option('register-property').disabled() or \
+   not get_option('get-all-properties').disabled()
+  subdir('basic-examples')
 endif
 
-if not get_option('get-all-properties').disabled()
-  subdir('get-all-properties')
-endif
+# build benchmark examples
 
-
-# build calculator with gen yaml folder
-
-if not get_option('calculator').disabled()
-  subdir('calculator')
-endif
-
-# build my-calculator example
-
-if not get_option('my-calculator').disabled()
-  subdir('my-calculator')
+if not get_option('benchmark-examples').disabled()
+  subdir('benchmark-examples')
 endif

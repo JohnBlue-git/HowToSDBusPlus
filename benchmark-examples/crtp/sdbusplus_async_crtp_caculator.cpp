@@ -137,16 +137,16 @@ class SdbusplusAsyncCalculatorService {
 
             {
                 d.multiply(x, y)
-            } -> std::same_as<sdbusplus::async::task<int64_t>>;
+                } -> std::same_as<int64_t>;
             {
                 d.divide(x, y)
-            } -> std::same_as<sdbusplus::async::task<int64_t>>;
+                } -> std::same_as<int64_t>;
             {
                 cd.express()
-            } -> std::same_as<sdbusplus::async::task<std::string>>;
+                } -> std::same_as<std::string>;
             {
                 d.clear()
-            } -> std::same_as<sdbusplus::async::task<void>>;
+                } -> std::same_as<void>;
         }, "CRTP contract mismatch: required properties or methods are missing or have incorrect signatures.");
     }
 
@@ -205,37 +205,31 @@ class SdbusplusAsyncCalculatorService {
                     std::make_index_sequence<std::tuple_size_v<typename T::value_types>>{});
             }
 
-            self->ctx_.spawn(
-                [](Derived* s,
-                   sdbusplus::message_t m_inner,
-                   typename T::value_types a) -> sdbusplus::async::task<> {
-                    if constexpr (std::is_void_v<typename T::return_type>)
-                    {
-                        co_await std::apply(
-                            [s](auto&&... params) {
-                                return (s->*MemberFunc)(
-                                    std::forward<decltype(params)>(params)...);
-                            },
-                            a);
+            if constexpr (std::is_void_v<typename T::return_type>)
+            {
+                std::apply(
+                    [derivedSelf](auto&&... params) {
+                        (derivedSelf->*MemberFunc)(
+                            std::forward<decltype(params)>(params)...);
+                    },
+                    args);
 
-                        auto reply = m_inner.new_method_return();
-                        reply.method_return();
-                    }
-                    else
-                    {
-                        auto result = co_await std::apply(
-                            [s](auto&&... params) {
-                                return (s->*MemberFunc)(
-                                    std::forward<decltype(params)>(params)...);
-                            },
-                            a);
+                auto reply = msg.new_method_return();
+                reply.method_return();
+            }
+            else
+            {
+                auto result = std::apply(
+                    [derivedSelf](auto&&... params) {
+                        return (derivedSelf->*MemberFunc)(
+                            std::forward<decltype(params)>(params)...);
+                    },
+                    args);
 
-                        auto reply = m_inner.new_method_return();
-                        reply.append(result);
-                        reply.method_return();
-                    }
-                    co_return;
-                }(derivedSelf, std::move(msg), std::move(args)));
+                auto reply = msg.new_method_return();
+                reply.append(result);
+                reply.method_return();
+            }
         }
         catch (const std::exception& e)
         {
@@ -253,29 +247,32 @@ class SdbusplusAsyncCalculatorService {
 
     // --- Logic Functions ---
 
-    sdbusplus::async::task<int64_t> multiply(int64_t x, int64_t y)
+    int64_t multiply(int64_t x, int64_t y)
     {
         lastResult_ = x * y;
-        co_return lastResult_;
+        status_ = CalculatorEnum::State::success;
+        return lastResult_;
     }
 
-    sdbusplus::async::task<int64_t> divide(int64_t x, int64_t y)
+    int64_t divide(int64_t x, int64_t y)
     {
         if (y == 0)
         {
+            status_ = CalculatorEnum::State::failure;
             throw sdbusplus::exception::SdBusError(
                 EDOM, CalculatorEnum::Error::divisionByZero);
         }
         lastResult_ = x / y;
-        co_return lastResult_;
+        status_ = CalculatorEnum::State::success;
+        return lastResult_;
     }
 
-    sdbusplus::async::task<std::string> express() const
+    std::string express() const
     {
-        co_return std::to_string(lastResult_);
+        return std::to_string(lastResult_);
     }
 
-    sdbusplus::async::task<void> clear()
+    void clear()
     {
         if (!owner_.empty() && owner_ != "root")
         {
@@ -289,8 +286,7 @@ class SdbusplusAsyncCalculatorService {
         auto s = interface_->new_signal("Cleared");
         s.append(oldVal);
         s.signal_send();
-
-        co_return;
+        status_ = CalculatorEnum::State::success;
     }
 
     // --- Variables ---
@@ -319,9 +315,9 @@ class SdbusplusAsyncCalculatorServiceDecimal :
     {}
 
   protected:
-    sdbusplus::async::task<std::string> express() const
+    std::string express() const
     {
-        co_return std::to_string(lastResult_);
+        return std::to_string(lastResult_);
     }
 };
 
@@ -337,12 +333,12 @@ class SdbusplusAsyncCalculatorServiceBinary :
     {}
 
   protected:
-    sdbusplus::async::task<std::string> express() const
+    std::string express() const
     {
         int64_t value = lastResult_;
         if (value == 0)
         {
-            co_return "0b0";
+            return "0b0";
         }
 
         std::string binary = "0b";
@@ -358,9 +354,9 @@ class SdbusplusAsyncCalculatorServiceBinary :
 
         if (negative)
         {
-            co_return "-" + binary + bits;
+            return "-" + binary + bits;
         }
-        co_return binary + bits;
+        return binary + bits;
     }
 };
 
@@ -376,12 +372,12 @@ class SdbusplusAsyncCalculatorServiceHeximal :
     {}
 
   protected:
-    sdbusplus::async::task<std::string> express() const
+    std::string express() const
     {
         int64_t value = lastResult_;
         std::ostringstream oss;
         oss << "0x" << std::hex << std::uppercase << value;
-        co_return oss.str();
+        return oss.str();
     }
 };
 

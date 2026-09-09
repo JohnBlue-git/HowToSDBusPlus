@@ -7,7 +7,7 @@ The project separates **Definition** (YAML), **Implementation** (CPP), and **Bui
 ### Project Source Tree
 
 ```text
-/workspaces/calculator/
+/workspaces/generated-via-yaml-examples/
 ├── meson.build                   # Build definitions
 ├── yaml/                         # Interface definitions
 │   └── net/poettering/
@@ -40,7 +40,7 @@ The `gen/` directory (inside your build folder) contains the generated artifacts
 
 ```text
 /workspaces/build/
-├── calculator/gen/net/poettering/Calculator/
+├── generated-via-yaml-examples/gen/net/poettering/Calculator/
 │   ├── server.hpp / .cpp     <-- Included by calculator-server.cpp
 │   ├── client.hpp / .cpp     <-- Included by calculator-client.cpp
 │   ├── event.hpp / .cpp      <-- Error/Signal handling

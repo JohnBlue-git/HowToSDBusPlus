@@ -1,198 +1,166 @@
+# HowToSDBusPlus
 
-## How to build
+This repository is a practical collection of C++ examples for
+[sdbusplus](https://github.com/openbmc/sdbusplus), the modern C++ layer on top
+of systemd's sd-bus API. The examples progress from small D-Bus calls to
+generated interfaces, asynchronous services, CRTP implementations, and
+benchmark comparisons.
 
-Pre-run
+## Project Structure
+
+```text
+.
+├── basic-examples/          # Small, focused D-Bus examples
+├── benchmark-examples/      # Calculator implementations and benchmarks
+│   ├── async/               # Asio and sdbusplus coroutine services
+│   ├── crtp/                # CRTP implementations, including YAML-generated
+│   ├── include/             # Shared handwritten example headers
+│   ├── non_async/           # Synchronous implementation
+│   ├── test/                # Benchmark runner and benchmark design
+│   └── yaml/                # Calculator contract used by code generation
+├── generated-via-yaml-examples/ # Standalone generated server/client examples
+├── tools/                   # Local sdbus++ and Meson helper tools
+├── Dockerfile               # Reproducible development image definition
+└── meson.build              # Top-level build configuration
+```
+
+Build directories such as `build/`, `build-docker/`, and `build-debug/` are
+ignored by Git.
+
+## Examples
+
+### Basic examples
+
+- [simple-dbuscall](basic-examples/simple-dbuscall/README.md): synchronous
+  method calls and timeout handling.
+- [use-systemd1](basic-examples/use-systemd1/README.md): querying systemd
+  services through D-Bus.
+- [emit-signal](basic-examples/emit-signal/README.md): emitting and receiving
+  D-Bus signals.
+- [asio-example](basic-examples/asio-example): integrating Boost.Asio with
+  sdbusplus.
+- [get-all-properties](basic-examples/get-all-properties): reading D-Bus
+  properties.
+- [list-users](basic-examples/list-users): calling a system service.
+- [register-property](basic-examples/register-property): registering service
+  properties.
+
+### Generated examples
+
+- [generated-via-yaml-examples](generated-via-yaml-examples/README.md): generates
+  common, server, client, and event bindings from YAML.
+- [benchmark-examples](benchmark-examples/README.md): compares synchronous,
+  Asio, native coroutine, handwritten CRTP, and YAML-generated services.
+
+## Build With Docker Image
+
+The easiest way to build this project is the prebuilt image:
+`johnbluedocker/sdbusplus-dev`.
+
+It already includes the compiler, Meson, Ninja, Boost, systemd development
+headers, Python generator dependencies, and sdbusplus. You do not need to
+install the complete toolchain or build sdbusplus manually on the host. The
+repository is mounted into the container, so source changes remain in the
+workspace and build output can be discarded safely.
+
+Pull the image once:
+
+```console
+docker pull johnbluedocker/sdbusplus-dev:latest
+```
+
+Build the project from the repository root:
+
+```console
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  johnbluedocker/sdbusplus-dev:latest \
+  bash -lc '
+    meson setup build-docker --wipe
+    meson compile -C build-docker
+  '
+```
+
+For a persistent interactive development shell:
+
+```console
+docker run --rm -it \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  johnbluedocker/sdbusplus-dev:latest \
+  /bin/bash
+```
+
+Then run inside the container:
+
 ```bash
-# Start DBus by service
-sudo service dbus start
-service --status-all
-# Reload (if service is running):
-sudo service dbus reload
+meson setup build-docker --wipe
+meson compile -C build-docker
+```
 
-# Start DBus by systemd
-systemctl start dbus
-systemctl
-# Reload (if service is running):
+When D-Bus runtime testing is needed, pass the host D-Bus socket and policy
+directory as well:
+
+```console
+docker run --rm -it \
+  -v /var/run/dbus:/var/run/dbus \
+  -v /etc/dbus-1/system.d:/etc/dbus-1/system.d \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  -e DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket \
+  johnbluedocker/sdbusplus-dev:latest \
+  /bin/bash
+```
+
+This image is also defined by [Dockerfile](Dockerfile), so the environment is
+documented and reproducible rather than being a collection of undocumented
+host packages.
+
+## Build On The Host
+
+If the required dependencies are already installed, build directly with
+Meson:
+
+```bash
+meson setup build --wipe
+meson compile -C build
+```
+
+Install executables and the D-Bus policy when needed:
+
+```bash
+sudo meson install -C build
 sudo systemctl reload dbus
 ```
 
-Pe-install
-[build-from-source-sdbusplus.md](build-from-source-sdbusplus.md)
+The detailed dependency instructions are in
+[INSTALL_SDBUSPLUS.md](INSTALL_SDBUSPLUS.md).
 
-Another quick choice is to use docker image created via [Dockerfile](Dockerfile)
-```console
-# add your user to the docker group (recommended)
-sudo usermod -aG docker $USER
+Useful build options include:
 
-# continue with activating the group:
-newgrp docker
-
-# run
-docker run -it johnbluedocker/sdbusplus-dev
-
-# Mount the host's D-Bus socket into the container
-# Mount the host's D-Bus configuration /etc/dbus-1/system.d
-# Mounts your current local directory into /workspace inside the container
-docker run -it \
-  -v /var/run/dbus:/var/run/dbus \
-  -v /etc/dbus-1/system.d:/etc/dbus-1/system.d \
-  -v $(pwd):/workspace \
-  -e DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket \
-  johnbluedocker/sdbusplus-dev \
-  /bin/bash
-
-# exit
-exit
-Crtl + D
-```
-
-The [sdbusplus] library builds on top of the [sd-bus] library to create a modern C++ API for D-Bus. The library attempts to be as lightweight as possible, usually compiling to exactly the sd-bus API calls that would have been necessary, while also providing compile-time type-safety and memory leak protection afforded by modern C++ practices.
-
-[sdbusplus]: https://github.com/openbmc/sdbusplus
-[sd-bus]: http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html
-
-\
-To build examples
-```console
-meson setup build --wipe
-meson setup build --reconfigure
-cd build
-ninja -j2
-sudo ninja install
-```
-To build individual
-```console
-meson setup build --reconfigure && meson compile -C build yaml_generated_caculator
-```
-
-## Here are common dbus commands to check whether the proprams work as expected
-
-### busctl
 ```bash
-# to tree object running
-busctl tree org.freedesktop.DBus
-
-# to introspect interfaces. methods, signals, properties
-busctl introspect org.freedesktop.DBus /org/freedesktop/DBus
-
-# to call
-busctl call -j \
-org.freedesktop.DBus \
-/org/freedesktop/DBus \
-org.freedesktop.DBus.Properties \
-Get ss \
-"org.freedesktop.DBus" "Interfaces"
-{
-        "type" : "v",
-        "data" : [
-                {
-                        "type" : "as",
-                        "data" : [
-                                "org.freedesktop.DBus.Monitoring",
-                                "org.freedesktop.DBus.Debug.Stats"
-                        ]
-                }
-        ]
-}
-
-# to get property
-busctl get-property -j \
-org.freedesktop.DBus \
-/org/freedesktop/DBus \
-org.freedesktop.DBus \
-Interfaces
-{
-        "type" : "as",
-        "data" : [
-                "org.freedesktop.DBus.Monitoring",
-                "org.freedesktop.DBus.Debug.Stats"
-        ]
-}
-
-# to emit signal
-busctl emit \
-  <com.example.SignalTest> \
-  </com/example/SignalTest> \
-  <com.example.SignalTest> \
-  <...> \
-  s "Hello from busctl"
-
-# to set property then signal will emerge
-sudo busctl call \
-<com.example.Service> \
-</com/example/Object> \
-org.freedesktop.DBus.Properties \
-Set ssv \
-"<com.example.Interface>" "<ExampleProperty>" "s" "<new value>"
-
-# to call something then signal will emerge
-# (this will cause your client to temporarily own a name, triggering the signal)
-busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ListNames
-# to send then signal will emerge
-#dbus-send --session --dest=org.freedesktop.DBus --type=method_call \
-#  --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames
-
-# to monitor signal
-busctl monitor \
-  --match="type='signal',interface='org.freedesktop.DBus',member='NameOwnerChanged'"
+meson setup build --wipe \
+  -Dbenchmark-examples-opt-mode=O3 \
+  -Dgenerated-via-yaml-examples=enabled
 ```
 
-### dbus-send
+Build selected executables with:
+
 ```bash
-# no tree method provided
-
-# introspect
-gdbus introspect --system \
-  --dest org.freedesktop.DBus \
-  --object-path /org/freedesktop/DBus
-
-# to call
-dbus-send --system \
-  --dest=org.freedesktop.DBus \
-  --print-reply \
-  --type=method_call \
-  /org/freedesktop/DBus \
-  org.freedesktop.DBus.Properties.Get \
-  string:"org.freedesktop.DBus" \
-  string:"Interfaces"
-
-# to get property
-dbus-send --system \
-  --dest=org.freedesktop.DBus \
-  --print-reply \
-  --type=method_call \
-  /org/freedesktop/DBus \
-  org.freedesktop.DBus.Properties.Get \
-  string:"org.freedesktop.DBus" \
-  string:"Interfaces"
-
-# no signal method
+meson compile -C build yaml_generated_caculator
+meson compile -C build calculator-server calculator-aserver calculator-client
 ```
 
-## Examples and How to use
+## D-Bus Usage
 
-## Start dbus if it is not yet started
+Start D-Bus before running service examples if it is not already running. The
+common `busctl`, `gdbus`, and `dbus-send` commands are collected separately in
+[DBUS_USAGE.md](DBUS_USAGE.md).
+
 ```bash
-# normally
 sudo systemctl start dbus
-# or
-sudo service dbus start
 ```
 
-### Example: [simple-dbuscall](simple-dbuscall/README.md)
-
-### Example: [use-systemd1](use-systemd1/README.md)
-
-### Example: [emit-signal](emit-signal/README.md)
-
-### Example: [caculator](caculator/README.md)
-
-### Example: [my-caculator](my-caculator/README.md)
-
-### Still organizing ...
-- asio-example
-- calculator
-- coroutine-example
-- get-all-properties
-- list-users
-- register-property
+For calculator service layout, method calls, properties, signals, and service
+startup examples, see [benchmark-examples/README.md](benchmark-examples/README.md).

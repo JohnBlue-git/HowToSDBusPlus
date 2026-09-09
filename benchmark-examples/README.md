@@ -1,4 +1,14 @@
-# my-calculator
+# benchmark-examples
+
+The source layout separates implementation style from test and contract data:
+
+- `source/non-async/`: regular, non-coroutine implementation
+- `source/async/`: Asio and native sdbusplus coroutine implementations
+- `source/crtp/`: synchronous CRTP implementations
+- `source/async-crtp/`: asynchronous CRTP implementations, including the YAML-generated version
+- `include/`: shared constants used by handwritten implementations
+- `yaml/`: D-Bus YAML contract and generation Meson files
+- `test/`: benchmark runner and its design notes
 
 This example uses one D-Bus contract and demonstrates five implementation styles:
 
@@ -29,6 +39,7 @@ sudo meson install -C build
 	- `boost_asio_crtp_caculator`
 	- `sdbusplus_async_caculator`
 	- `sdbusplus_async_crtp_caculator`
+	- `sdbusplus_async_sleep_crtp_caculator`
 	- `yaml_generated_caculator`
 - D-Bus policy: `my-calculator.conf` to `/etc/dbus-1/system.d`
 
@@ -43,15 +54,17 @@ sudo systemctl reload dbus
 Run one of the five binaries (all request the same service name):
 
 ```bash
-sudo ./build/my-calculator/boost_asio_caculator
+sudo ./build/benchmark-examples/boost_asio_caculator
 # or
-sudo ./build/my-calculator/boost_asio_crtp_caculator
+sudo ./build/benchmark-examples/boost_asio_crtp_caculator
 # or
-sudo ./build/my-calculator/sdbusplus_async_caculator
+sudo ./build/benchmark-examples/sdbusplus_async_caculator
 # or
-sudo ./build/my-calculator/sdbusplus_async_crtp_caculator
+sudo ./build/benchmark-examples/sdbusplus_async_crtp_caculator
 # or
-sudo ./build/my-calculator/yaml_generated_caculator
+sudo ./build/benchmark-examples/sdbusplus_async_sleep_crtp_caculator
+# or
+sudo ./build/benchmark-examples/yaml_generated_caculator
 ```
 
 ### 1.2.1 YAML-generated CRTP target
@@ -164,7 +177,7 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 	- Single object path (root)
 
 - `boost_asio_crtp_caculator.cpp`
-	- `boost::asio::io_context` + CRTP
+	- `boost::asio::io_context` + CRTP with synchronous CPU-only handlers
 	- Creates three objects: decimal/binary/heximal
 
 - `sdbusplus_async_caculator.cpp`
@@ -172,8 +185,13 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 	- Single object path (root)
 
 - `sdbusplus_async_crtp_caculator.cpp`
-	- `sdbusplus::async::context` + CRTP + coroutine `task<>`
+	- `sdbusplus::async::context` + CRTP with direct synchronous handlers
 	- Three objects: decimal/binary/heximal
+
+- `async-crtp/sdbusplus_async_sleep_crtp_caculator.cpp`
+	- `sdbusplus::async::context` + CRTP + `co_await sleep_for`
+	- Delays `Multiply` asynchronously by 10 ms to demonstrate suspension
+	- Keeps the event loop available for other D-Bus requests while waiting
 
 - `yaml_generated_caculator.cpp`
 	- `sdbusplus::async::context` + CRTP based on generated `aserver.hpp`
@@ -197,8 +215,9 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 
 - `sdbusplus::async::context`
 	- Async runtime tailored for sdbusplus
-	- Method handlers can return `sdbusplus::async::task<T>` directly
-	- More coroutine / `co_await` native style for D-Bus handlers
+	- This CRTP example keeps CPU-only methods synchronous to avoid an unnecessary
+	  coroutine scheduling hop
+	- Use `sdbusplus::async::task<T>` when a method actually awaits I/O
 
 Practical rule of thumb:
 
@@ -353,7 +372,7 @@ In short:
 
 ## 5) Comprehensive comparision between all executable
 
-This section benchmarks all `my-calculator` executables with the same D-Bus
+This section benchmarks all `benchmark-examples` executables with the same D-Bus
 contract and compares:
 
 - Handling speed (`Ops/s`, `Avg ms/op`)
@@ -362,17 +381,17 @@ contract and compares:
 ### 5.1 Build in optimized mode (`O2` / `O3`)
 
 From repository root, choose optimization mode via Meson option
-`my-calculator-opt-mode`:
+`benchmark-examples-opt-mode`:
 
 ```bash
-meson setup build --wipe -Dmy-calculator-opt-mode=O2
+meson setup build --wipe -Dbenchmark-examples-opt-mode=O2
 meson compile -C build
 ```
 
 or:
 
 ```bash
-meson setup build --wipe -Dmy-calculator-opt-mode=O3
+meson setup build --wipe -Dbenchmark-examples-opt-mode=O3
 meson compile -C build
 ```
 
@@ -401,16 +420,16 @@ python3 -m pip install -U pytest
 Run from repository root:
 
 ```bash
-pytest -s my-calculator/benchmark_compare.py
+pytest -s benchmark-examples/test/benchmark_compare.py
 
-python3 -m pytest -s my-calculator/benchmark_compare.py
+python3 -m pytest -s benchmark-examples/test/benchmark_compare.py
 ```
 
 ### 5.4 Optional runtime controls (environment variables)
 
 You can tune benchmark behavior without editing code:
 
-- `MYCALC_BUILD_DIR` (default: `build/my-calculator`)
+- `MYCALC_BUILD_DIR` (default: `build/benchmark-examples`)
 - `MYCALC_ITERATIONS` (default: `300`)
 - `MYCALC_WARMUP` (default: `40`)
 - `MYCALC_STARTUP_TIMEOUT` (default: `8.0`)
@@ -423,7 +442,7 @@ Example (only run two executables with custom loop count):
 ```bash
 MYCALC_ITERATIONS=1000 \
 MYCALC_ONLY=boost_asio_caculator,sdbusplus_async_caculator \
-pytest -s my-calculator/benchmark_compare.py
+pytest -s benchmark-examples/test/benchmark_compare.py
 ```
 
 ### 5.5 Output interpretation
@@ -439,7 +458,7 @@ For fair comparison:
 - Run each mode (`O2` / `O3`) multiple times
 - Compare trends, not just a single run
 
-### 5.5 Output Results:
+### 5.6 Latest validation results
 
 Terms:
 - **Ops/s**  
@@ -453,15 +472,98 @@ Terms:
   **Lower is generally better**.
 - **Peak HWM (KiB)**  
   High-water mark of resident memory during process lifetime (highest RSS ever reached), in KiB.
-```bash
-============================================================================
+The latest Docker build completed successfully with the following validation
+command:
+
+```console
+docker run --rm \
+	-v "$(pwd):/workspace" \
+	-w /workspace \
+	johnbluedocker/sdbusplus-dev:latest \
+	meson compile -C build-docker
+```
+
+Result: **50/50 build steps passed**, including:
+
+- all basic examples;
+- all synchronous and asynchronous benchmark examples;
+- `sdbusplus_async_sleep_crtp_caculator`;
+- YAML code generation and all `generated-via-yaml-examples` executables.
+
+The latest runtime benchmark was executed inside
+`johnbluedocker/sdbusplus-dev:latest` with an isolated D-Bus system bus. It used
+`MYCALC_ITERATIONS=30`, `MYCALC_WARMUP=5`, and all seven targets. All tests
+passed in 1.82 seconds:
+
+```text
 Executable                                Ops/s    Avg ms/op  Peak RSS(KiB)  Peak HWM(KiB)
 ----------------------------------------------------------------------------
-non_async_caculator                      195.56       5.1135           4992           4992
-boost_asio_caculator                     212.97       4.6954           5248           5248
-boost_asio_crtp_caculator                210.45       4.7516           5120           5120
-sdbusplus_async_caculator                213.35       4.6872           4992           4992
-sdbusplus_async_crtp_caculator           200.94       4.9765           5248           5248
-yaml_generated_caculator                 211.37       4.7311           5376           5376
+non_async_caculator                      245.41       4.0748           5212           5212
+boost_asio_caculator                     309.52       3.2309           5164           5164
+boost_asio_crtp_caculator                302.48       3.3059           5364           5364
+sdbusplus_async_caculator                276.49       3.6167           5336           5336
+sdbusplus_async_crtp_caculator           246.18       4.0620           5256           5256
+sdbusplus_async_sleep_crtp_caculator      67.31      14.8574           5308           5308
+yaml_generated_caculator                 293.21       3.4105           5448           5448
+```
+
+Speed ranking for this run was:
+
+```text
+boost_asio_caculator > boost_asio_crtp_caculator > yaml_generated_caculator
+> sdbusplus_async_caculator > sdbusplus_async_crtp_caculator
+> non_async_caculator > sdbusplus_async_sleep_crtp_caculator
+```
+
+The sleep-based async target is intentionally not a fair CPU-only competitor:
+its `Multiply` method awaits a 10 ms timer. Its measured 14.8574 ms/op includes
+that wait plus D-Bus overhead and demonstrates coroutine suspension rather
+than arithmetic throughput. These are short-sample development results, not
+production performance numbers; repeat with larger iteration counts and a
+stable host when comparing small differences.
+
+### Why the async sleep target is slower
+
+The `co_await` operation does not make one request complete faster. It
+intentionally suspends `Multiply` for 10 ms:
+
+```text
+measured latency ~= 10 ms timer wait
+					+ D-Bus round trip
+					+ busctl process startup
+					+ coroutine scheduling
+```
+
+The benchmark sends requests sequentially and waits for each `busctl` command
+to finish before sending the next one. Therefore every request includes the
+full timer delay. This measures single-request latency, not the concurrency
+benefit of asynchronous execution.
+
+The benefit of `co_await` appears when multiple requests or other D-Bus work
+can run while one request is waiting for I/O or a timer. For example, ten
+concurrent 10 ms requests can complete in roughly one timer interval plus
+transport overhead, while ten blocking requests would wait for approximately
+ten intervals. A concurrent client benchmark is required to measure that
+behavior fairly.
+
+For this reason, interpret the targets separately:
+
+- zero-wait targets compare CPU-only D-Bus dispatch and arithmetic overhead;
+- `sdbusplus_async_sleep_crtp_caculator` demonstrates coroutine suspension;
+- its lower Ops/s is expected and does not indicate that CRTP itself is slow.
+
+When runtime D-Bus is available, run the zero-wait implementations together:
+
+```bash
+MYCALC_ONLY=non_async_caculator,boost_asio_caculator,boost_asio_crtp_caculator,sdbusplus_async_caculator,sdbusplus_async_crtp_caculator \
+pytest -s benchmark-examples/test/benchmark_compare.py
+```
+
+Run the timer-based async example separately because each `Multiply` call
+intentionally waits 10 ms:
+
+```bash
+MYCALC_ONLY=sdbusplus_async_sleep_crtp_caculator \
+pytest -s benchmark-examples/test/benchmark_compare.py
 ```
 

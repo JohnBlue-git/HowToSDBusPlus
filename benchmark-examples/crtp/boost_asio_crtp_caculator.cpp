@@ -1,7 +1,6 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <boost/asio/spawn.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <sdbusplus/asio/connection.hpp>
 #include <sdbusplus/asio/object_server.hpp>
@@ -70,28 +69,29 @@ class BoostAsioCalculatorService {
                         return this->get_property<&BoostAsioCalculatorService::owner_>(currVal);
                     });
 
-                // Methods using yield_context (The sdbusplus-native async way)
-                
+                // These operations are CPU-only, so keep them on the direct
+                // synchronous dispatch path. Use yield_context only when a
+                // handler actually needs to suspend for I/O.
                 i.register_method("Multiply",
-                    [this](boost::asio::yield_context yield, int64_t x, int64_t y) {
-                        return this->derived().handle_multiply(yield, x, y);
+                    [this](int64_t x, int64_t y) {
+                        return this->derived().handle_multiply(x, y);
                     });
 
                 i.register_method("Divide",
-                    [this](boost::asio::yield_context yield, int64_t x, int64_t y) {
-                        return this->derived().handle_divide(yield, x, y);
+                    [this](int64_t x, int64_t y) {
+                        return this->derived().handle_divide(x, y);
                     });
 
                 i.register_method("Express",
-                    [this](boost::asio::yield_context yield) {
-                        return this->derived().handle_express(yield);
+                    [this]() {
+                        return this->derived().handle_express();
                     });
 
                 i.register_method("Clear",
-                    [this, &i](boost::asio::yield_context yield) {
+                    [this, &i]() {
                         // Clear
                         int64_t oldValue = this->lastResult_;
-                        this->derived().handle_clear(yield);
+                        this->derived().handle_clear();
 
                         // Signal
                         auto s = i.new_signal("Cleared");
@@ -114,24 +114,27 @@ class BoostAsioCalculatorService {
         return this->*PtrToMember;
     }
 
-    int64_t handle_multiply(boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+    int64_t handle_multiply(int64_t x, int64_t y) {
         lastResult_ = x * y;
+        status_ = CalculatorEnum::State::success;
         return lastResult_;
     }
 
-    int64_t handle_divide(boost::asio::yield_context /*yield*/, int64_t x, int64_t y) {
+    int64_t handle_divide(int64_t x, int64_t y) {
         if (y == 0) {
+            status_ = CalculatorEnum::State::failure;
             throw sdbusplus::exception::SdBusError(EDOM, CalculatorEnum::Error::divisionByZero);
         }
         lastResult_ = x / y;
+        status_ = CalculatorEnum::State::success;
         return lastResult_;
     }
 
-    std::string handle_express(boost::asio::yield_context /*yield*/) const {
+    std::string handle_express() const {
         return std::to_string(lastResult_);
     }
 
-    void handle_clear(boost::asio::yield_context /*yield*/) {
+    void handle_clear() {
         // Note: In a real system, you'd map 'caller' to a UID.
         // For this example, if owner_ is set and doesn't match, we deny.
         if (!owner_.empty() && owner_ != "root") { 
@@ -140,6 +143,7 @@ class BoostAsioCalculatorService {
 
         // Clear
         lastResult_ = 0;
+        status_ = CalculatorEnum::State::success;
     }
 
     // --- Variables ---
@@ -172,7 +176,7 @@ class BoostAsioCalculatorServiceDecimal : public BoostAsioCalculatorService<Boos
 
     // --- Logic Functions ---
 
-    std::string handle_express(boost::asio::yield_context /*yield*/) const {
+    std::string handle_express() const {
         return std::to_string(lastResult_);
     }
 };
@@ -192,7 +196,7 @@ class BoostAsioCalculatorServiceBinary : public BoostAsioCalculatorService<Boost
 
     // --- Logic Functions ---
 
-    std::string handle_express(boost::asio::yield_context /*yield*/) const {
+    std::string handle_express() const {
         int64_t value = lastResult_;
         if (value == 0) return "0b0";
         
@@ -225,7 +229,7 @@ class BoostAsioCalculatorServiceHeximal : public BoostAsioCalculatorService<Boos
 
     // --- Logic Functions ---
 
-    std::string handle_express(boost::asio::yield_context /*yield*/) const {
+    std::string handle_express() const {
         int64_t value = lastResult_;
         std::ostringstream oss;
         oss << "0x" << std::hex << std::uppercase << value;

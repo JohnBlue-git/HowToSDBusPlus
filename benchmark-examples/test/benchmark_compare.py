@@ -23,6 +23,7 @@ TARGETS: Dict[str, str] = {
     "boost_asio_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
     "sdbusplus_async_caculator": "/xyz/openbmc_project/calculator",
     "sdbusplus_async_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
+    "sdbusplus_async_sleep_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
     "yaml_generated_caculator": "/xyz/openbmc_project/calculator/decimal",
 }
 
@@ -220,7 +221,7 @@ def print_results(results: List[BenchResult]) -> None:
 
 
 def load_config() -> BenchConfig:
-    build_dir = Path(os.getenv("MYCALC_BUILD_DIR", "build/my-calculator"))
+    build_dir = Path(os.getenv("MYCALC_BUILD_DIR", "build/benchmark-examples"))
     iterations = int(os.getenv("MYCALC_ITERATIONS", "300"))
     warmup = int(os.getenv("MYCALC_WARMUP", "40"))
     startup_timeout = float(os.getenv("MYCALC_STARTUP_TIMEOUT", "8.0"))

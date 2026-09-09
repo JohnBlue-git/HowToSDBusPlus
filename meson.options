@@ -14,17 +14,17 @@ option('register-property', type: 'feature', description: 'Build register-proper
 
 option('get-all-properties', type: 'feature', description: 'Build get-all-properties', value : 'enabled')
 
-option('calculator', type: 'feature', description: 'Build calculator', value : 'enabled')
+option('generated-via-yaml-examples', type: 'feature', description: 'Build examples generated via YAML', value : 'enabled')
 
-option('my-calculator', type: 'feature', description: 'Build my-calculator', value : 'enabled')
+option('benchmark-examples', type: 'feature', description: 'Build benchmark examples', value : 'enabled')
 
 option(
-	'my-calculator-opt-mode',
+	'benchmark-examples-opt-mode',
 	type: 'combo',
 	choices: ['default', 'O2', 'O3'],
 	value: 'O3',
-	description: 'Optimization mode for my-calculator targets'
+	description: 'Optimization mode for benchmark examples'
 )
 
 # sample command with options:
-#rm -rf build && meson setup build --reconfigure -Dcalculator=disabled -Dasio-example=disabled
+#rm -rf build && meson setup build --reconfigure -Dgenerated-via-yaml-examples=disabled -Dasio-example=disabled
