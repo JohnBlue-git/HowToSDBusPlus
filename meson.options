@@ -1,18 +1,4 @@
-option('simple-dbuscall', type: 'feature', description: 'Build simple-dbuscall', value : 'enabled')
-
-option('use-systemd1', type: 'feature', description: 'Build use-systemd1', value : 'enabled')
-
-option('emit-signal', type: 'feature', description: 'Build emit-signal', value : 'enabled')
-
-option('list-users', type: 'feature', description: 'Build list-users', value : 'enabled')
-
-option('coroutine-example', type: 'feature', description: 'Build coroutine-example', value : 'enabled')
-
-option('asio-example', type: 'feature', description: 'Build asio-example', value : 'enabled')
-
-option('register-property', type: 'feature', description: 'Build register-property', value : 'enabled')
-
-option('get-all-properties', type: 'feature', description: 'Build get-all-properties', value : 'enabled')
+option('basic-examples', type: 'feature', description: 'Build basic examples', value: 'enabled')
 
 option('generated-via-yaml-examples', type: 'feature', description: 'Build examples generated via YAML', value : 'enabled')
 
@@ -25,6 +11,3 @@ option(
 	value: 'O3',
 	description: 'Optimization mode for benchmark examples'
 )
-
-# sample command with options:
-#rm -rf build && meson setup build --reconfigure -Dgenerated-via-yaml-examples=disabled -Dasio-example=disabled

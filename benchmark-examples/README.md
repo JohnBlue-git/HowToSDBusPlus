@@ -4,19 +4,20 @@ The source layout separates implementation style from test and contract data:
 
 - `source/non-async/`: regular, non-coroutine implementation
 - `source/async/`: Asio and native sdbusplus coroutine implementations
-- `source/crtp/`: synchronous CRTP implementations
+- `source/crtp/`: CRTP implementations and the shared C++ Concept contract
 - `source/async-crtp/`: asynchronous CRTP implementations, including the YAML-generated version
 - `include/`: shared constants used by handwritten implementations
 - `yaml/`: D-Bus YAML contract and generation Meson files
 - `test/`: benchmark runner and its design notes
 
-This example uses one D-Bus contract and demonstrates five implementation styles:
+This example uses one D-Bus contract and demonstrates six implementation styles:
 
 - `boost::asio::io_context` + regular class
 - `boost::asio::io_context` + CRTP
 - `sdbusplus::async::context` + regular class
 - `sdbusplus::async::context` + CRTP
 - `sdbusplus::async::context` + CRTP (generated from YAML by `sdbus++`)
+- `sdbusplus::async::context` + CRTP (generated from YAML, with an awaited timer)
 
 ---
 
@@ -40,7 +41,8 @@ sudo meson install -C build
 	- `sdbusplus_async_caculator`
 	- `sdbusplus_async_crtp_caculator`
 	- `sdbusplus_async_sleep_crtp_caculator`
-	- `yaml_generated_caculator`
+	- `yaml_generated_crtp_caculator`
+	- `yaml_generated_sleep_crtp_caculator`
 - D-Bus policy: `my-calculator.conf` to `/etc/dbus-1/system.d`
 
 If you just installed the policy, reload dbus:
@@ -51,7 +53,7 @@ sudo systemctl reload dbus
 
 ### 1.2 Start the service
 
-Run one of the five binaries (all request the same service name):
+Run one of the eight binaries (all request the same service name):
 
 ```bash
 sudo ./build/benchmark-examples/boost_asio_caculator
@@ -64,19 +66,23 @@ sudo ./build/benchmark-examples/sdbusplus_async_crtp_caculator
 # or
 sudo ./build/benchmark-examples/sdbusplus_async_sleep_crtp_caculator
 # or
-sudo ./build/benchmark-examples/yaml_generated_caculator
+sudo ./build/benchmark-examples/yaml_generated_sleep_crtp_caculator
+# or
+sudo ./build/benchmark-examples/yaml_generated_crtp_caculator
 ```
 
 ### 1.2.1 YAML-generated CRTP target
 
-`yaml_generated_caculator` is generated and built from:
+`yaml_generated_crtp_caculator` and `yaml_generated_sleep_crtp_caculator` are
+generated and built from:
 
 - `xyz/openbmc_project/Calculator.interface.yaml`
 - `xyz/openbmc_project/Calculator.events.yaml`
 
 Meson runs `sdbus++-gen-meson` to produce generated headers/sources (`common.hpp`,
-`event.hpp`, `aserver.hpp`, ...), then compiles `yaml_generated_caculator.cpp`
-against them.
+`event.hpp`, `aserver.hpp`, ...), then compiles the YAML CRTP source
+against them. The sleep target uses the same implementation with `Multiply`
+awaiting a 10 ms timer.
 
 ### 1.3 D-Bus interface model
 
@@ -153,7 +159,7 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 ## 2) Structure (purpose of each file)
 
 - `meson.build`
-	- Declares four executables
+	- Declares eight executables
 	- Installs `my-calculator.conf` into the D-Bus policy directory
 
 - `my-calculator.conf`
@@ -171,6 +177,10 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 - `calculator_enum.hpp`
 	- Central constants for service/interface/object paths/error names
 	- Avoids duplicated hard-coded strings across `.cpp` files
+
+- `source/crtp/calculator_contract.hpp`
+	- C++ Concept defining the async CRTP method contract
+	- Used by the hand-written async CRTP services before interface setup
 
 - `boost_asio_caculator.cpp`
 	- `boost::asio::io_context` + `sdbusplus::asio`
@@ -193,10 +203,16 @@ For CRTP multi-object variants, switch `OBJ` to one of:
 	- Delays `Multiply` asynchronously by 10 ms to demonstrate suspension
 	- Keeps the event loop available for other D-Bus requests while waiting
 
-- `yaml_generated_caculator.cpp`
+- `yaml_generated_sleep_crtp_caculator.cpp`
 	- `sdbusplus::async::context` + CRTP based on generated `aserver.hpp`
 	- Uses generated `common.hpp` / `event.hpp` / `aserver.hpp`
 	- Three objects: decimal/binary/heximal
+	- Adds a 10 ms `co_await sleep_for` to successful `Multiply` and `Divide`
+	  calls for an apples-to-apples async suspension comparison
+
+- `source/crtp/yaml_generated_crtp_caculator.cpp`
+	- Uses the same generated YAML CRTP implementation without the timer wait
+	- Provides the fair CPU-only counterpart to the sleep target
 
 - `xyz/openbmc_project/Calculator.interface.yaml`
 	- YAML contract used by `sdbus++` code generation for this target
@@ -229,6 +245,11 @@ Practical rule of thumb:
 ## 4) `virtual override` vs CRTP
 
 Both are polymorphism techniques, but they resolve function calls at different times.
+
+The examples below show the general design difference. This repository uses
+CRTP for the calculator service glue; it does not add a virtual calculator base
+class. The D-Bus vtable or generated `aserver.hpp` dispatches into the selected
+derived implementation.
 
 - `virtual override`: runtime polymorphism (vtable dispatch)
 - CRTP: compile-time polymorphism (template instantiation + static dispatch)
@@ -317,17 +338,35 @@ class BinaryCalculator : public CalculatorBase<BinaryCalculator> {
 };
 ```
 
-Contract checking (same idea used in this repo):
+Contract checking in this repository:
 
 ```cpp
-template <typename D>
-concept CalculatorContract = requires(D d, const D cd, int64_t x, int64_t y) {
-		{ d.multiplyImpl(x, y) } -> std::same_as<int64_t>;
-		{ cd.expressImpl() } -> std::same_as<std::string>;
+#include "calculator_contract.hpp"
+
+template <typename Derived>
+class SdbusplusAsyncCalculatorService {
+	void checkContract() const {
+		static_assert(CalculatorContract<Derived>);
+	}
 };
 
-static_assert(CalculatorContract<BinaryCalculator>);
+// CalculatorResult accepts either Value or sdbusplus::async::task<Value>.
+// This supports synchronous CPU-only CRTP handlers and coroutine handlers.
 ```
+
+The shared contract in `source/crtp/calculator_contract.hpp` checks all four
+calculator operations:
+
+```cpp
+calculator.multiply(x, y)  -> int64_t or task<int64_t>
+calculator.divide(x, y)    -> int64_t or task<int64_t>
+constCalculator.express()  -> std::string or task<std::string>
+calculator.clear()         -> void or task<void>
+```
+
+Each CRTP constructor calls `checkContract()` before `setupInterface()`, so a
+derived class that violates the method contract fails at compile time before
+the D-Bus interface is registered.
 
 Pros:
 
@@ -346,10 +385,13 @@ Trade-off:
 	- One service class with all logic in one place
 	- Easier to read when behavior variants are not required
 
-- CRTP files (`boost_asio_crtp_caculator.cpp`, `sdbusplus_async_crtp_caculator.cpp`)
+- CRTP files (`boost_asio_crtp_caculator.cpp`, `sdbusplus_async_crtp_caculator.cpp`,
+  and the generated YAML CRTP targets)
 	- One reusable base for D-Bus glue
 	- Derived classes only customize behavior (especially `Express()` for decimal/binary/heximal)
 	- Better fit for "same interface, multiple formatting strategies"
+	- The YAML pair uses the same generated contract; only the sleep target awaits
+	  a timer in its method implementation
 
 ### 4.4 Dispatch difference at a glance
 
@@ -366,11 +408,14 @@ auto c = b.express();
 In short:
 
 - Prefer `virtual override` when runtime substitution is the primary goal
-- Prefer CRTP when you want zero-overhead static polymorphism and strong compile-time contracts
+- Prefer CRTP when the implementation is selected at compile time and you want
+	strong compile-time contracts
+- For this benchmark, do not interpret CRTP as automatically faster: D-Bus
+	marshalling, coroutine scheduling, and timer waits dominate the measured path
 
 ---
 
-## 5) Comprehensive comparision between all executable
+## 5) Comprehensive comparison between all executables
 
 This section benchmarks all `benchmark-examples` executables with the same D-Bus
 contract and compares:
@@ -380,18 +425,22 @@ contract and compares:
 
 ### 5.1 Build in optimized mode (`O2` / `O3`)
 
-From repository root, choose optimization mode via Meson option
-`benchmark-examples-opt-mode`:
+From repository root, enable the benchmark group and choose its optimization
+mode via the Meson option `benchmark-examples-opt-mode`:
 
 ```bash
-meson setup build --wipe -Dbenchmark-examples-opt-mode=O2
+meson setup build --wipe \
+	-Dbenchmark-examples=enabled \
+	-Dbenchmark-examples-opt-mode=O2
 meson compile -C build
 ```
 
 or:
 
 ```bash
-meson setup build --wipe -Dbenchmark-examples-opt-mode=O3
+meson setup build --wipe \
+	-Dbenchmark-examples=enabled \
+	-Dbenchmark-examples-opt-mode=O3
 meson compile -C build
 ```
 
@@ -483,49 +532,51 @@ docker run --rm \
 	meson compile -C build-docker
 ```
 
-Result: **50/50 build steps passed**, including:
+Result: **54/54 build steps passed**, including:
 
 - all basic examples;
 - all synchronous and asynchronous benchmark examples;
-- `sdbusplus_async_sleep_crtp_caculator`;
+- both `sdbusplus_async_sleep_crtp_caculator` and `yaml_generated_sleep_crtp_caculator`;
 - YAML code generation and all `generated-via-yaml-examples` executables.
 
 The latest runtime benchmark was executed inside
-`johnbluedocker/sdbusplus-dev:latest` with an isolated D-Bus system bus. It used
-`MYCALC_ITERATIONS=30`, `MYCALC_WARMUP=5`, and all seven targets. All tests
-passed in 1.82 seconds:
+`johnbluedocker/sdbusplus-dev:latest` with an isolated session-configured bus
+exposed through `DBUS_SYSTEM_BUS_ADDRESS`. It used `MYCALC_ITERATIONS=5`,
+`MYCALC_WARMUP=1`, and all eight targets. All tests passed in 0.66 seconds:
 
 ```text
 Executable                                Ops/s    Avg ms/op  Peak RSS(KiB)  Peak HWM(KiB)
 ----------------------------------------------------------------------------
-non_async_caculator                      245.41       4.0748           5212           5212
-boost_asio_caculator                     309.52       3.2309           5164           5164
-boost_asio_crtp_caculator                302.48       3.3059           5364           5364
-sdbusplus_async_caculator                276.49       3.6167           5336           5336
-sdbusplus_async_crtp_caculator           246.18       4.0620           5256           5256
-sdbusplus_async_sleep_crtp_caculator      67.31      14.8574           5308           5308
-yaml_generated_caculator                 293.21       3.4105           5448           5448
+non_async_caculator                      215.86       4.6325           5100           5100
+boost_asio_caculator                     269.93       3.7047           5356           5356
+boost_asio_crtp_caculator                249.99       4.0001           5324           5324
+sdbusplus_async_caculator                302.03       3.3110           5180           5180
+sdbusplus_async_crtp_caculator           235.71       4.2425           5368           5368
+sdbusplus_async_sleep_crtp_caculator      65.68      15.2263           5300           5300
+yaml_generated_crtp_caculator            281.78       3.5489           5356           5356
+yaml_generated_sleep_crtp_caculator       66.52      15.0328           5496           5496
 ```
 
 Speed ranking for this run was:
 
 ```text
-boost_asio_caculator > boost_asio_crtp_caculator > yaml_generated_caculator
-> sdbusplus_async_caculator > sdbusplus_async_crtp_caculator
-> non_async_caculator > sdbusplus_async_sleep_crtp_caculator
+sdbusplus_async_caculator > yaml_generated_crtp_caculator > boost_asio_caculator
+> boost_asio_crtp_caculator > sdbusplus_async_crtp_caculator
+> non_async_caculator > yaml_generated_sleep_crtp_caculator
+> sdbusplus_async_sleep_crtp_caculator
 ```
 
-The sleep-based async target is intentionally not a fair CPU-only competitor:
-its `Multiply` method awaits a 10 ms timer. Its measured 14.8574 ms/op includes
-that wait plus D-Bus overhead and demonstrates coroutine suspension rather
-than arithmetic throughput. These are short-sample development results, not
-production performance numbers; repeat with larger iteration counts and a
-stable host when comparing small differences.
+The sleep-based async targets are intentionally not fair CPU-only competitors:
+their successful `Multiply` and `Divide` methods await a 10 ms timer. Their
+measured latency includes that wait plus D-Bus overhead and demonstrates
+coroutine suspension rather than arithmetic throughput. These are short-sample
+development results, not production performance numbers; repeat with larger
+iteration counts and a stable host when comparing small differences.
 
 ### Why the async sleep target is slower
 
 The `co_await` operation does not make one request complete faster. It
-intentionally suspends `Multiply` for 10 ms:
+intentionally suspends successful `Multiply` and `Divide` calls for 10 ms:
 
 ```text
 measured latency ~= 10 ms timer wait
@@ -549,21 +600,22 @@ behavior fairly.
 For this reason, interpret the targets separately:
 
 - zero-wait targets compare CPU-only D-Bus dispatch and arithmetic overhead;
-- `sdbusplus_async_sleep_crtp_caculator` demonstrates coroutine suspension;
-- its lower Ops/s is expected and does not indicate that CRTP itself is slow.
+- `sdbusplus_async_sleep_crtp_caculator` and `yaml_generated_sleep_crtp_caculator`
+	demonstrate coroutine suspension;
+- their lower Ops/s is expected and does not indicate that CRTP itself is slow.
 
 When runtime D-Bus is available, run the zero-wait implementations together:
 
 ```bash
-MYCALC_ONLY=non_async_caculator,boost_asio_caculator,boost_asio_crtp_caculator,sdbusplus_async_caculator,sdbusplus_async_crtp_caculator \
+MYCALC_ONLY=non_async_caculator,boost_asio_caculator,boost_asio_crtp_caculator,sdbusplus_async_caculator,sdbusplus_async_crtp_caculator,yaml_generated_crtp_caculator \
 pytest -s benchmark-examples/test/benchmark_compare.py
 ```
 
-Run the timer-based async example separately because each `Multiply` call
-intentionally waits 10 ms:
+Run the timer-based async examples separately because each successful `Multiply`
+and `Divide` call intentionally waits 10 ms:
 
 ```bash
-MYCALC_ONLY=sdbusplus_async_sleep_crtp_caculator \
+MYCALC_ONLY=sdbusplus_async_sleep_crtp_caculator,yaml_generated_sleep_crtp_caculator \
 pytest -s benchmark-examples/test/benchmark_compare.py
 ```
 

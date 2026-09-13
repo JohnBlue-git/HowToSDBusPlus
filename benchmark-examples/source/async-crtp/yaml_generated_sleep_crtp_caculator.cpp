@@ -1,3 +1,11 @@
+#ifndef YAML_GENERATED_NO_SLEEP
+#define YAML_GENERATED_SLEEP_CRTP
+#endif
+
+#ifdef YAML_GENERATED_SLEEP_CRTP
+#include <chrono>
+#include <sdbusplus/async/timer.hpp>
+#endif
 #include <iostream>
 #include <sstream>
 #include <utility>
@@ -17,7 +25,7 @@ class YamlGeneratedCalculatorService :
 
     YamlGeneratedCalculatorService(sdbusplus::async::context& ctx,
                                    const char* objectPath) :
-        GeneratedBase(ctx, objectPath)
+        GeneratedBase(ctx, objectPath), ctx_(ctx)
     {
         this->status(State::Success);
         this->owner("root");
@@ -35,11 +43,15 @@ class YamlGeneratedCalculatorService :
   public:
 
     auto method_call(typename GeneratedBase::multiply_t, auto x, auto y)
+        -> sdbusplus::async::task<typename GeneratedBase::multiply_t::return_type>
     {
+#ifdef YAML_GENERATED_SLEEP_CRTP
+        co_await sdbusplus::async::sleep_for(ctx_, std::chrono::milliseconds(10));
+#endif // YAML_GENERATED_SLEEP_CRTP
         auto result = x * y;
         this->last_result(result);
         this->status(State::Success);
-        return result;
+        co_return result;
     }
 
     auto method_call(typename GeneratedBase::divide_t, auto x, auto y)
@@ -53,6 +65,9 @@ class YamlGeneratedCalculatorService :
             throw DivisionByZero();
         }
 
+#ifdef YAML_GENERATED_SLEEP_CRTP
+        co_await sdbusplus::async::sleep_for(ctx_, std::chrono::milliseconds(10));
+#endif // YAML_GENERATED_SLEEP_CRTP
         auto result = x / y;
         this->last_result(result);
         this->status(State::Success);
@@ -82,6 +97,7 @@ class YamlGeneratedCalculatorService :
     }
 
   protected:
+        sdbusplus::async::context& ctx_;
     std::string owner_ = "root";
 };
 
@@ -180,7 +196,11 @@ int main()
             co_return;
         }(ctx));
 
-        std::cout << "yaml_generated_caculator service is running" << std::endl;
+    #ifdef YAML_GENERATED_SLEEP_CRTP
+        std::cout << "yaml_generated_sleep_crtp_caculator service is running" << std::endl;
+    #else
+        std::cout << "yaml_generated_crtp_caculator service is running" << std::endl;
+    #endif
         ctx.run();
     }
     catch (const std::exception& e)

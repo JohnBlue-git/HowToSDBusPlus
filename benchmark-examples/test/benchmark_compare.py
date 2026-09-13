@@ -24,7 +24,8 @@ TARGETS: Dict[str, str] = {
     "sdbusplus_async_caculator": "/xyz/openbmc_project/calculator",
     "sdbusplus_async_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
     "sdbusplus_async_sleep_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
-    "yaml_generated_caculator": "/xyz/openbmc_project/calculator/decimal",
+    "yaml_generated_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
+    "yaml_generated_sleep_crtp_caculator": "/xyz/openbmc_project/calculator/decimal",
 }
 
 

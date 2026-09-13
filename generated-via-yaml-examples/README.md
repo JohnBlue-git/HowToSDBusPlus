@@ -1,4 +1,53 @@
-This guide provides a comprehensive breakdown of the `sdbusplus` calculator example, integrating the **CRTP (Curiously Recurring Template Pattern)** binding mechanism into the build flow and architecture.
+This guide explains the `sdbusplus` calculator example and its YAML-generated
+server, asynchronous CRTP server, and asynchronous client bindings.
+
+## 0. Build and Run
+
+Run these commands from the repository root. The generated examples are
+controlled by the `generated-via-yaml-examples` Meson group option:
+
+```bash
+meson setup build --wipe \
+    -Dgenerated-via-yaml-examples=enabled
+meson compile -C build
+```
+
+To build only the generated examples and benchmark examples, disable the basic
+group:
+
+```bash
+meson setup build --wipe \
+    -Dbasic-examples=disabled \
+    -Dbenchmark-examples=enabled \
+    -Dgenerated-via-yaml-examples=enabled
+meson compile -C build
+```
+
+The same build works in the provided Docker image:
+
+```console
+docker run --rm \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    johnbluedocker/sdbusplus-dev:latest \
+    bash -lc '
+        meson setup build-docker --wipe \
+            -Dgenerated-via-yaml-examples=enabled
+        meson compile -C build-docker
+    '
+```
+
+The build produces:
+
+- `calculator-server`: synchronous generated server using virtual overrides.
+- `calculator-aserver`: asynchronous generated server using CRTP and
+  `sdbusplus::async::task` handlers.
+- `calculator-client`: asynchronous generated client proxy.
+
+After installing the policy with `meson install`, start D-Bus before running
+the server/client pair. See [DBUS_USAGE.md](../docs/DBUS_USAGE.md) for common
+bus commands and [INSTALL_SDBUSPLUS.md](../docs/INSTALL_SDBUSPLUS.md) for host
+dependencies.
 
 ## 1. Source Structure & Meson Build Flow
 
@@ -7,7 +56,7 @@ The project separates **Definition** (YAML), **Implementation** (CPP), and **Bui
 ### Project Source Tree
 
 ```text
-/workspaces/generated-via-yaml-examples/
+generated-via-yaml-examples/
 ├── meson.build                   # Build definitions
 ├── yaml/                         # Interface definitions
 │   └── net/poettering/
@@ -20,16 +69,21 @@ The project separates **Definition** (YAML), **Implementation** (CPP), and **Bui
 ```
 
 1. **`calculator-server.cpp`**: Synchronous. Simple, but blocks the bus during processing.
-2. **`calculator-aserver.cpp`**: Asynchronous. Uses `boost::asio` to stay responsive during long tasks.
+2. **`calculator-aserver.cpp`**: Asynchronous. Uses
+    `sdbusplus::async::context` and coroutine tasks to stay responsive during
+    long tasks.
 3. **`calculator-client.cpp`**: Uses the generated **Client Proxy** to call the server as if it were a local C++ object.
 
 ### The Meson/Ninja Build Flow
 
-1. **Find Tooling**: Meson locates the `sdbus++` python executable.
-2. **Run Generator**: Meson triggers `sdbus++` to parse the YAML and generate:
-* `server.hpp`: Abstract base classes for your server.
+1. **Find Tooling**: Meson locates `sdbus++` and the local
+    `sdbus++-gen-meson` helper.
+2. **Run Generator**: Meson triggers the generator to parse the YAML and
+    generate:
+* `server.hpp`: Synchronous server interfaces.
+* `aserver.hpp`: Asynchronous server interfaces and CRTP dispatch support.
 * `client.hpp`: Proxy classes for callers.
-* `event.hpp`: Exception classes for errors (from `events.yaml`).
+* `event.hpp`: Exception and event classes from `events.yaml`.
 
 
 3. **Compile**: The C++ compiler takes your `.cpp` files, includes the generated `.hpp` files, and creates the binary.
@@ -39,7 +93,7 @@ The project separates **Definition** (YAML), **Implementation** (CPP), and **Bui
 The `gen/` directory (inside your build folder) contains the generated artifacts:
 
 ```text
-/workspaces/build/
+build/
 ├── generated-via-yaml-examples/gen/net/poettering/Calculator/
 │   ├── server.hpp / .cpp     <-- Included by calculator-server.cpp
 │   ├── client.hpp / .cpp     <-- Included by calculator-client.cpp
@@ -187,16 +241,18 @@ events:
 
 ---
 
-## 3. How Interfaces are Bound (CRTP)
+## 3. How Generated Interfaces are Bound
 
-The "magic" of `sdbusplus` lies in how it connects C++ functions to the D-Bus bus. This is handled via **CRTP (Curiously Recurring Template Pattern)**.
+The generated bindings connect C++ functions to the D-Bus bus. The synchronous
+server uses virtual overrides, while the asynchronous server uses CRTP
+(`Curiously Recurring Template Pattern`) dispatch.
 
-### The Developer Implementation
+### The Synchronous Developer Implementation
 
 In `calculator-server.cpp`, you bind your logic by inheriting from a template-generated class.
 
 ```cpp
-// You inherit from the generated server class using CRTP
+// The synchronous generated server uses a virtual interface.
 class Calculator : public sdbusplus::server::object_t<
                           sdbusplus::net::poettering::server::Calculator> 
 {
@@ -206,7 +262,7 @@ class Calculator : public sdbusplus::server::object_t<
             sdbusplus::server::object_t<
                 sdbusplus::net::poettering::server::Calculator>(bus, path) {}
 
-        // Simply override the generated pure virtual functions
+        // Override the generated pure virtual functions
         int64_t add(int64_t x, int64_t y) override {
             return x + y;
         }
@@ -271,7 +327,7 @@ sdbusplus::async::task<int64_t> add(int64_t x, int64_t y) override {
 
 ### Implementation Effort
 
-| Feature | Manual (`sd-bus`) | `sdbusplus` (YAML + CRTP) |
+| Feature | Manual (`sd-bus`) | `sdbusplus` (YAML-generated bindings) |
 | --- | --- | --- |
 | **Interface** | Vtable arrays in C code. | High-level YAML (declarative). |
 | **Type Safety** | **Low**: Manual pack/unpack. | **High**: Generated native C++ types. |

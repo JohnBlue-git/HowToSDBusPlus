@@ -80,14 +80,7 @@ endif
 
 # build basic examples
 
-if not get_option('simple-dbuscall').disabled() or \
-   not get_option('use-systemd1').disabled() or \
-   not get_option('emit-signal').disabled() or \
-   not get_option('list-users').disabled() or \
-  not get_option('coroutine-example').disabled() or \
-   not get_option('asio-example').disabled() or \
-   not get_option('register-property').disabled() or \
-   not get_option('get-all-properties').disabled()
+if not get_option('basic-examples').disabled()
   subdir('basic-examples')
 endif
 

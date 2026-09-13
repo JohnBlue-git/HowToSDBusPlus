@@ -14,6 +14,7 @@
 #include <sdbusplus/vtable.hpp>
 
 #include "calculator_enum.hpp"
+#include "calculator_contract.hpp"
 
 template <typename Derived>
 class AsyncCrptCalculatorService
@@ -51,6 +52,12 @@ class AsyncCrptCalculatorService
         using return_type = void;
     };
 
+    void checkContract() const
+    {
+        static_assert(CalculatorContract<Derived>,
+                      "CRTP contract mismatch: required calculator methods are missing or have incorrect signatures");
+    }
+
     void setupInterface()
     {
         static const sdbusplus::vtable_t vtable[] = {
@@ -82,16 +89,6 @@ class AsyncCrptCalculatorService
 
         interface_ = std::make_unique<sdbusplus::server::interface::interface>(
             ctx_.get_bus(), objectPath_, CalculatorEnum::interface, vtable, this);
-    }
-
-    void checkContract() const
-    {
-        static_assert(requires(Derived& d, const Derived& cd, int64_t x, int64_t y) {
-            { d.multiply(x, y) } -> std::same_as<sdbusplus::async::task<int64_t>>;
-            { d.divide(x, y) } -> std::same_as<sdbusplus::async::task<int64_t>>;
-            { cd.express() } -> std::same_as<sdbusplus::async::task<std::string>>;
-            { d.clear() } -> std::same_as<sdbusplus::async::task<void>>;
-        });
     }
 
     template <auto Member>

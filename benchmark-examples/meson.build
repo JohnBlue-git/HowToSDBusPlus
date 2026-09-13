@@ -53,7 +53,7 @@ executable(
 executable(
     'sdbusplus_async_sleep_crtp_caculator',
     'source/async-crtp/sdbusplus_async_sleep_crtp_caculator.cpp',
-    include_directories: include_directories('include'),
+    include_directories: include_directories('include', 'source/crtp'),
     dependencies: sdbusplus_dep,
     override_options: benchmark_examples_override_options,
     install: true
@@ -65,10 +65,20 @@ sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson', native: true)
 yaml_generated_sources = []
 subdir('yaml/xyz')
 executable(
-    'yaml_generated_caculator',
-    'source/async-crtp/yaml_generated_caculator.cpp',
+    'yaml_generated_crtp_caculator',
+    'source/crtp/yaml_generated_crtp_caculator.cpp',
     yaml_generated_sources,
-    include_directories: include_directories('include', 'yaml'),
+    include_directories: include_directories('include', 'yaml', 'source/crtp'),
+    dependencies: sdbusplus_dep,
+    cpp_args: ['-Wno-subobject-linkage'],
+    override_options: benchmark_examples_override_options,
+    install: true
+)
+executable(
+    'yaml_generated_sleep_crtp_caculator',
+    'source/async-crtp/yaml_generated_sleep_crtp_caculator.cpp',
+    yaml_generated_sources,
+    include_directories: include_directories('include', 'yaml', 'source/crtp'),
     dependencies: sdbusplus_dep,
     override_options: benchmark_examples_override_options,
     install: true

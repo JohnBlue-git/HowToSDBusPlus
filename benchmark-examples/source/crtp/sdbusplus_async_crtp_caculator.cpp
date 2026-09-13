@@ -9,6 +9,7 @@
 #include <sdbusplus/server/interface.hpp>
 #include <sdbusplus/exception.hpp>
 #include "calculator_enum.hpp"
+#include "calculator_contract.hpp"
 
 template <typename Derived>
 class SdbusplusAsyncCalculatorService {
@@ -29,6 +30,12 @@ class SdbusplusAsyncCalculatorService {
     }
 
   protected:
+    void checkContract() const
+    {
+        static_assert(CalculatorContract<Derived>,
+                      "CRTP contract mismatch: required calculator methods are missing or have incorrect signatures");
+    }
+
     void setupInterface()
     {
         static const sdbusplus::vtable_t vtable[] = {
@@ -116,38 +123,6 @@ class SdbusplusAsyncCalculatorService {
     inline const Derived& derived() const
     {
         return static_cast<const Derived&>(*this);
-    }
-
-    inline void checkContract() const
-    {
-        static_assert(
-            requires(Derived& d, const Derived& cd, int64_t x, int64_t y) {
-            {
-                d.lastResult_
-            } -> std::same_as<int64_t&>;
-            {
-                d.base_
-            } -> std::same_as<std::string&>;
-            {
-                d.status_
-            } -> std::same_as<std::string&>;
-            {
-                d.owner_
-            } -> std::same_as<std::string&>;
-
-            {
-                d.multiply(x, y)
-                } -> std::same_as<int64_t>;
-            {
-                d.divide(x, y)
-                } -> std::same_as<int64_t>;
-            {
-                cd.express()
-                } -> std::same_as<std::string>;
-            {
-                d.clear()
-                } -> std::same_as<void>;
-        }, "CRTP contract mismatch: required properties or methods are missing or have incorrect signatures.");
     }
 
     // --- Templated Handlers ---
